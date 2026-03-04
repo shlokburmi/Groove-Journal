@@ -8,6 +8,10 @@
 // ── Auth ───────────────────────────────────────────────────────────────
 const AUTH_STORAGE_KEY = 'vinyl_auth_provider';
 const AUTH_USER_KEY = 'vinyl_auth_user';
+const SPOTIFY_TOKEN_KEY = 'vinyl_spotify_token';
+const SPOTIFY_TOKEN_EXPIRY_KEY = 'vinyl_spotify_token_expiry';
+const GOOGLE_TOKEN_KEY = 'vinyl_google_token';
+const GOOGLE_TOKEN_EXPIRY_KEY = 'vinyl_google_token_expiry';
 
 const authScreen = document.getElementById('authScreen');
 const appWrap = document.getElementById('appWrap');
@@ -22,95 +26,265 @@ const PROVIDER_META = {
   guest: { label: 'guest', dotClass: '', color: '' },
 };
 
-// OAuth configuration (real provider endpoints)
-const OAUTH_CONFIG = {
-  spotify: {
-    authUrl: 'https://accounts.spotify.com/authorize',
-    clientId: 'YOUR_SPOTIFY_CLIENT_ID', // Replace with actual client ID
-    scope: 'user-read-private user-read-email',
-    redirectUri: window.location.origin + window.location.pathname,
-  },
-  apple: {
-    // Apple Music uses MusicKit JS — we trigger the sign in flow
-    signInUrl: 'https://music.apple.com',
-  },
-  youtube: {
-    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    clientId: 'YOUR_GOOGLE_CLIENT_ID', // Replace with actual client ID
-    scope: 'https://www.googleapis.com/auth/youtube.readonly',
-    redirectUri: window.location.origin + window.location.pathname,
-  },
-};
+// ── Spotify OAuth PKCE Config ──────────────────────────────────────────
+const SPOTIFY_CLIENT_ID = 'd1f234370a394629b77a8a9d54d7c22b';
+const SPOTIFY_REDIRECT_URI = window.location.origin + window.location.pathname;
+const SPOTIFY_SCOPES = 'user-read-private user-read-email';
 
-function initAuth() {
-  // Check for OAuth callback (hash or search params from redirect)
-  handleOAuthCallback();
+// PKCE helpers
+function generateRandomString(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const arr = new Uint8Array(length);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => chars[b % chars.length]).join('');
+}
 
+async function sha256(plain) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plain);
+  return await crypto.subtle.digest('SHA-256', data);
+}
+
+function base64urlEncode(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let str = '';
+  bytes.forEach(b => str += String.fromCharCode(b));
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function startSpotifyLogin() {
+  const codeVerifier = generateRandomString(64);
+  const hashed = await sha256(codeVerifier);
+  const codeChallenge = base64urlEncode(hashed);
+
+  // Store verifier for the callback
+  sessionStorage.setItem('spotify_code_verifier', codeVerifier);
+  sessionStorage.setItem('vinyl_oauth_pending', 'spotify');
+
+  const url = new URL('https://accounts.spotify.com/authorize');
+  url.searchParams.set('client_id', SPOTIFY_CLIENT_ID);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('redirect_uri', SPOTIFY_REDIRECT_URI);
+  url.searchParams.set('scope', SPOTIFY_SCOPES);
+  url.searchParams.set('code_challenge_method', 'S256');
+  url.searchParams.set('code_challenge', codeChallenge);
+  url.searchParams.set('show_dialog', 'true');
+
+  window.location.href = url.toString();
+}
+
+async function exchangeSpotifyCode(code) {
+  const codeVerifier = sessionStorage.getItem('spotify_code_verifier');
+  if (!codeVerifier) return null;
+
+  try {
+    const resp = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: SPOTIFY_CLIENT_ID,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: SPOTIFY_REDIRECT_URI,
+        code_verifier: codeVerifier,
+      }),
+    });
+
+    if (!resp.ok) throw new Error('Token exchange failed');
+    const data = await resp.json();
+
+    localStorage.setItem(SPOTIFY_TOKEN_KEY, data.access_token);
+    localStorage.setItem(SPOTIFY_TOKEN_EXPIRY_KEY, Date.now() + (data.expires_in * 1000));
+
+    sessionStorage.removeItem('spotify_code_verifier');
+    return data.access_token;
+  } catch (e) {
+    console.error('Spotify token exchange error:', e);
+    return null;
+  }
+}
+
+async function fetchSpotifyProfile(token) {
+  try {
+    const resp = await fetch('https://api.spotify.com/v1/me', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    if (!resp.ok) throw new Error('Profile fetch failed');
+    return await resp.json();
+  } catch (e) {
+    console.error('Spotify profile error:', e);
+    return null;
+  }
+}
+
+function isSpotifyTokenValid() {
+  const expiry = localStorage.getItem(SPOTIFY_TOKEN_EXPIRY_KEY);
+  return expiry && Date.now() < parseInt(expiry);
+}
+
+// ── Google OAuth PKCE Config (YouTube Music) ──────────────────────────
+const GOOGLE_CLIENT_ID = '914079723485-dj7tsibbth4hjhb1ifhgaq9jp9sslvmv.apps.googleusercontent.com';
+const GOOGLE_REDIRECT_URI = window.location.origin + window.location.pathname;
+const GOOGLE_SCOPES = 'openid profile email';
+
+async function startGoogleLogin() {
+  const codeVerifier = generateRandomString(64);
+  const hashed = await sha256(codeVerifier);
+  const codeChallenge = base64urlEncode(hashed);
+
+  sessionStorage.setItem('google_code_verifier', codeVerifier);
+  sessionStorage.setItem('vinyl_oauth_pending', 'youtube');
+
+  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  url.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('redirect_uri', GOOGLE_REDIRECT_URI);
+  url.searchParams.set('scope', GOOGLE_SCOPES);
+  url.searchParams.set('code_challenge_method', 'S256');
+  url.searchParams.set('code_challenge', codeChallenge);
+  url.searchParams.set('access_type', 'online');
+  url.searchParams.set('prompt', 'consent');
+
+  window.location.href = url.toString();
+}
+
+async function exchangeGoogleCode(code) {
+  const codeVerifier = sessionStorage.getItem('google_code_verifier');
+  if (!codeVerifier) return null;
+
+  try {
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        code_verifier: codeVerifier,
+      }),
+    });
+
+    if (!resp.ok) throw new Error('Google token exchange failed');
+    const data = await resp.json();
+
+    localStorage.setItem(GOOGLE_TOKEN_KEY, data.access_token);
+    localStorage.setItem(GOOGLE_TOKEN_EXPIRY_KEY, Date.now() + (data.expires_in * 1000));
+
+    sessionStorage.removeItem('google_code_verifier');
+    return data.access_token;
+  } catch (e) {
+    console.error('Google token exchange error:', e);
+    return null;
+  }
+}
+
+async function fetchGoogleProfile(token) {
+  try {
+    const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    if (!resp.ok) throw new Error('Google profile fetch failed');
+    return await resp.json();
+  } catch (e) {
+    console.error('Google profile error:', e);
+    return null;
+  }
+}
+
+function isGoogleTokenValid() {
+  const expiry = localStorage.getItem(GOOGLE_TOKEN_EXPIRY_KEY);
+  return expiry && Date.now() < parseInt(expiry);
+}
+
+// ── Init Auth ──────────────────────────────────────────────────────────
+async function initAuth() {
+  // Check for Spotify OAuth callback (code in URL params)
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+  const pendingProvider = sessionStorage.getItem('vinyl_oauth_pending');
+
+  if (code && pendingProvider === 'spotify') {
+    authScreen.style.display = 'flex';
+    appWrap.style.display = 'none';
+
+    const token = await exchangeSpotifyCode(code);
+    history.replaceState(null, '', window.location.pathname);
+
+    if (token) {
+      const profile = await fetchSpotifyProfile(token);
+      const displayName = profile?.display_name || profile?.id || 'spotify user';
+      localStorage.setItem(AUTH_STORAGE_KEY, 'spotify');
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+        provider: 'spotify',
+        name: displayName,
+        id: profile?.id,
+        connectedAt: Date.now(),
+      }));
+      showApp('spotify');
+      return;
+    } else {
+      sessionStorage.removeItem('vinyl_oauth_pending');
+    }
+  }
+
+  if (code && pendingProvider === 'youtube') {
+    authScreen.style.display = 'flex';
+    appWrap.style.display = 'none';
+
+    const token = await exchangeGoogleCode(code);
+    history.replaceState(null, '', window.location.pathname);
+
+    if (token) {
+      const profile = await fetchGoogleProfile(token);
+      const displayName = profile?.name || profile?.email || 'youtube user';
+      localStorage.setItem(AUTH_STORAGE_KEY, 'youtube');
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+        provider: 'youtube',
+        name: displayName,
+        id: profile?.id,
+        connectedAt: Date.now(),
+      }));
+      showApp('youtube');
+      return;
+    } else {
+      sessionStorage.removeItem('vinyl_oauth_pending');
+    }
+  }
+
+  // Check for existing session
   const saved = localStorage.getItem(AUTH_STORAGE_KEY);
   if (saved) {
+    // If Spotify, check if token is still valid and refresh name
+    if (saved === 'spotify' && isSpotifyTokenValid()) {
+      const token = localStorage.getItem(SPOTIFY_TOKEN_KEY);
+      const profile = await fetchSpotifyProfile(token);
+      if (profile) {
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+          provider: 'spotify',
+          name: profile.display_name || profile.id || 'spotify user',
+          id: profile.id,
+          connectedAt: Date.now(),
+        }));
+      }
+    }
+    if (saved === 'youtube' && isGoogleTokenValid()) {
+      const token = localStorage.getItem(GOOGLE_TOKEN_KEY);
+      const profile = await fetchGoogleProfile(token);
+      if (profile) {
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+          provider: 'youtube',
+          name: profile.name || profile.email || 'youtube user',
+          id: profile.id,
+          connectedAt: Date.now(),
+        }));
+      }
+    }
     showApp(saved);
   } else {
     authScreen.style.display = 'flex';
     appWrap.style.display = 'none';
   }
-}
-
-function handleOAuthCallback() {
-  // Spotify returns token in hash
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash || window.location.search);
-
-  if (params.get('access_token') || params.get('code')) {
-    // Determine which provider returned
-    const pendingProvider = sessionStorage.getItem('vinyl_oauth_pending');
-    if (pendingProvider) {
-      sessionStorage.removeItem('vinyl_oauth_pending');
-      const token = params.get('access_token') || params.get('code');
-      localStorage.setItem(AUTH_STORAGE_KEY, pendingProvider);
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ token, provider: pendingProvider, connectedAt: Date.now() }));
-      // Clean URL
-      history.replaceState(null, '', window.location.pathname);
-    }
-  }
-}
-
-function initiateOAuth(provider) {
-  const cfg = OAUTH_CONFIG[provider];
-  if (!cfg) return;
-
-  // Show loading state on button
-  const btn = document.getElementById('auth' + provider.charAt(0).toUpperCase() + provider.slice(1));
-  if (btn) {
-    btn.classList.add('auth-btn-loading');
-    btn.disabled = true;
-  }
-
-  sessionStorage.setItem('vinyl_oauth_pending', provider);
-
-  setTimeout(() => {
-    if (provider === 'spotify') {
-      const url = new URL(cfg.authUrl);
-      url.searchParams.set('client_id', cfg.clientId);
-      url.searchParams.set('response_type', 'token');
-      url.searchParams.set('redirect_uri', cfg.redirectUri);
-      url.searchParams.set('scope', cfg.scope);
-      url.searchParams.set('show_dialog', 'true');
-      window.location.href = url.toString();
-    } else if (provider === 'apple') {
-      // Apple Music auth — open MusicKit sign-in
-      // For demo without MusicKit: open apple music page and save as connected
-      sessionStorage.removeItem('vinyl_oauth_pending');
-      showApp('apple');
-    } else if (provider === 'youtube') {
-      const url = new URL(cfg.authUrl);
-      url.searchParams.set('client_id', cfg.clientId);
-      url.searchParams.set('response_type', 'token');
-      url.searchParams.set('redirect_uri', cfg.redirectUri);
-      url.searchParams.set('scope', cfg.scope);
-      url.searchParams.set('include_granted_scopes', 'true');
-      window.location.href = url.toString();
-    }
-  }, 600);
 }
 
 function showApp(provider) {
@@ -119,7 +293,14 @@ function showApp(provider) {
   localStorage.setItem(AUTH_STORAGE_KEY, provider);
 
   const meta = PROVIDER_META[provider] || PROVIDER_META.guest;
-  userPillLabel.textContent = meta.label;
+
+  // Try to show real username
+  const userInfo = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  if (userInfo && userInfo.name && userInfo.provider === provider) {
+    userPillLabel.textContent = userInfo.name;
+  } else {
+    userPillLabel.textContent = meta.label;
+  }
   userPillDot.className = 'user-pill-dot ' + meta.dotClass;
 
   if (provider === 'spotify') highlightAuthTab('spotify');
@@ -133,17 +314,10 @@ function highlightAuthTab(provider) {
   state._defaultTab = provider;
 }
 
-// Wire up auth buttons — use real OAuth where possible
+// Wire up auth buttons
 document.getElementById('authSpotify').addEventListener('click', () => {
-  // In a real deployment with actual client IDs, this starts OAuth
-  // For demo: detect if client ID is real or placeholder
-  if (OAUTH_CONFIG.spotify.clientId !== 'YOUR_SPOTIFY_CLIENT_ID') {
-    initiateOAuth('spotify');
-  } else {
-    // Demo mode: simulate auth
-    showAuthLoading('authSpotify');
-    setTimeout(() => showApp('spotify'), 800);
-  }
+  showAuthLoading('authSpotify');
+  setTimeout(() => startSpotifyLogin(), 400);
 });
 
 document.getElementById('authApple').addEventListener('click', () => {
@@ -152,12 +326,8 @@ document.getElementById('authApple').addEventListener('click', () => {
 });
 
 document.getElementById('authYoutube').addEventListener('click', () => {
-  if (OAUTH_CONFIG.youtube.clientId !== 'YOUR_GOOGLE_CLIENT_ID') {
-    initiateOAuth('youtube');
-  } else {
-    showAuthLoading('authYoutube');
-    setTimeout(() => showApp('youtube'), 800);
-  }
+  showAuthLoading('authYoutube');
+  setTimeout(() => startGoogleLogin(), 400);
 });
 
 document.getElementById('authSkip').addEventListener('click', () => showApp('guest'));
@@ -182,6 +352,10 @@ function showAuthLoading(btnId) {
 logoutBtn.addEventListener('click', () => {
   localStorage.removeItem(AUTH_STORAGE_KEY);
   localStorage.removeItem(AUTH_USER_KEY);
+  localStorage.removeItem(SPOTIFY_TOKEN_KEY);
+  localStorage.removeItem(SPOTIFY_TOKEN_EXPIRY_KEY);
+  localStorage.removeItem(GOOGLE_TOKEN_KEY);
+  localStorage.removeItem(GOOGLE_TOKEN_EXPIRY_KEY);
   appWrap.style.display = 'none';
   authScreen.style.display = 'flex';
   // Reset any loading states on auth buttons
