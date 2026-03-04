@@ -209,12 +209,21 @@ async function initAuth() {
 
     if (token) {
       const profile = await fetchSpotifyProfile(token);
-      const displayName = (profile?.display_name && profile.display_name.trim()) || profile?.email?.split('@')[0] || profile?.id || 'spotify user';
+      let displayName;
+      if (profile) {
+        displayName = (profile.display_name && profile.display_name.trim()) || profile.email?.split('@')[0] || profile.id || null;
+      }
+      // If profile fetch failed (e.g. no Premium), ask user for their name
+      if (!displayName) {
+        displayName = prompt('Welcome! Spotify requires Premium for auto-detection.\nPlease enter your display name:');
+        if (!displayName || !displayName.trim()) displayName = 'music lover';
+        displayName = displayName.trim();
+      }
       localStorage.setItem(AUTH_STORAGE_KEY, 'spotify');
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
         provider: 'spotify',
         name: displayName,
-        id: profile?.id,
+        id: profile?.id || 'spotify',
         connectedAt: Date.now(),
       }));
       showApp('spotify');
@@ -229,16 +238,18 @@ async function initAuth() {
   if (saved) {
     // If Spotify, check if token is still valid and refresh name
     if (saved === 'spotify' && isSpotifyTokenValid()) {
+      // Only refresh name if profile fetch succeeds (requires Premium)
       const token = localStorage.getItem(SPOTIFY_TOKEN_KEY);
       const profile = await fetchSpotifyProfile(token);
-      if (profile) {
+      if (profile && (profile.display_name || profile.id)) {
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
           provider: 'spotify',
-          name: (profile.display_name && profile.display_name.trim()) || profile.email?.split('@')[0] || profile.id || 'spotify user',
+          name: (profile.display_name && profile.display_name.trim()) || profile.email?.split('@')[0] || profile.id,
           id: profile.id,
           connectedAt: Date.now(),
         }));
       }
+      // If profile fails, keep the previously stored name
     }
     if (saved === 'youtube' && isGoogleTokenValid()) {
       const token = localStorage.getItem(GOOGLE_TOKEN_KEY);
