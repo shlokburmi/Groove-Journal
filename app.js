@@ -109,8 +109,14 @@ async function fetchSpotifyProfile(token) {
     const resp = await fetch('https://api.spotify.com/v1/me', {
       headers: { 'Authorization': 'Bearer ' + token },
     });
-    if (!resp.ok) throw new Error('Profile fetch failed');
-    return await resp.json();
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error('Spotify profile HTTP error:', resp.status, errText);
+      throw new Error('Profile fetch failed: ' + resp.status);
+    }
+    const data = await resp.json();
+    console.log('Spotify profile response:', data);
+    return data;
   } catch (e) {
     console.error('Spotify profile error:', e);
     return null;
@@ -122,61 +128,22 @@ function isSpotifyTokenValid() {
   return expiry && Date.now() < parseInt(expiry);
 }
 
-// ── Google OAuth PKCE Config (YouTube Music) ──────────────────────────
+// ── Google OAuth Implicit Flow (YouTube Music) ────────────────────────
 const GOOGLE_CLIENT_ID = '914079723485-dj7tsibbth4hjhb1ifhgaq9jp9sslvmv.apps.googleusercontent.com';
 const GOOGLE_REDIRECT_URI = window.location.origin + window.location.pathname;
 const GOOGLE_SCOPES = 'openid profile email';
 
-async function startGoogleLogin() {
-  const codeVerifier = generateRandomString(64);
-  const hashed = await sha256(codeVerifier);
-  const codeChallenge = base64urlEncode(hashed);
-
-  sessionStorage.setItem('google_code_verifier', codeVerifier);
+function startGoogleLogin() {
   sessionStorage.setItem('vinyl_oauth_pending', 'youtube');
 
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   url.searchParams.set('client_id', GOOGLE_CLIENT_ID);
-  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('response_type', 'token');
   url.searchParams.set('redirect_uri', GOOGLE_REDIRECT_URI);
   url.searchParams.set('scope', GOOGLE_SCOPES);
-  url.searchParams.set('code_challenge_method', 'S256');
-  url.searchParams.set('code_challenge', codeChallenge);
-  url.searchParams.set('access_type', 'online');
-  url.searchParams.set('prompt', 'consent');
+  url.searchParams.set('prompt', 'select_account');
 
   window.location.href = url.toString();
-}
-
-async function exchangeGoogleCode(code) {
-  const codeVerifier = sessionStorage.getItem('google_code_verifier');
-  if (!codeVerifier) return null;
-
-  try {
-    const resp = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: GOOGLE_REDIRECT_URI,
-        code_verifier: codeVerifier,
-      }),
-    });
-
-    if (!resp.ok) throw new Error('Google token exchange failed');
-    const data = await resp.json();
-
-    localStorage.setItem(GOOGLE_TOKEN_KEY, data.access_token);
-    localStorage.setItem(GOOGLE_TOKEN_EXPIRY_KEY, Date.now() + (data.expires_in * 1000));
-
-    sessionStorage.removeItem('google_code_verifier');
-    return data.access_token;
-  } catch (e) {
-    console.error('Google token exchange error:', e);
-    return null;
-  }
 }
 
 async function fetchGoogleProfile(token) {
@@ -199,11 +166,40 @@ function isGoogleTokenValid() {
 
 // ── Init Auth ──────────────────────────────────────────────────────────
 async function initAuth() {
-  // Check for Spotify OAuth callback (code in URL params)
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
   const pendingProvider = sessionStorage.getItem('vinyl_oauth_pending');
 
+  // ── Google implicit flow: token in URL hash ──
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const hashToken = hashParams.get('access_token');
+  const hashExpiresIn = hashParams.get('expires_in');
+
+  if (hashToken && pendingProvider === 'youtube') {
+    authScreen.style.display = 'flex';
+    appWrap.style.display = 'none';
+
+    localStorage.setItem(GOOGLE_TOKEN_KEY, hashToken);
+    localStorage.setItem(GOOGLE_TOKEN_EXPIRY_KEY, Date.now() + ((parseInt(hashExpiresIn) || 3600) * 1000));
+
+    // Clean URL
+    history.replaceState(null, '', window.location.pathname);
+    sessionStorage.removeItem('vinyl_oauth_pending');
+
+    const profile = await fetchGoogleProfile(hashToken);
+    const displayName = profile?.name || profile?.email || 'youtube user';
+    localStorage.setItem(AUTH_STORAGE_KEY, 'youtube');
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+      provider: 'youtube',
+      name: displayName,
+      id: profile?.id,
+      connectedAt: Date.now(),
+    }));
+    showApp('youtube');
+    return;
+  }
+
+  // ── Spotify PKCE flow: code in URL params ──
   if (code && pendingProvider === 'spotify') {
     authScreen.style.display = 'flex';
     appWrap.style.display = 'none';
@@ -213,7 +209,7 @@ async function initAuth() {
 
     if (token) {
       const profile = await fetchSpotifyProfile(token);
-      const displayName = profile?.display_name || profile?.id || 'spotify user';
+      const displayName = (profile?.display_name && profile.display_name.trim()) || profile?.email?.split('@')[0] || profile?.id || 'spotify user';
       localStorage.setItem(AUTH_STORAGE_KEY, 'spotify');
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
         provider: 'spotify',
@@ -222,30 +218,6 @@ async function initAuth() {
         connectedAt: Date.now(),
       }));
       showApp('spotify');
-      return;
-    } else {
-      sessionStorage.removeItem('vinyl_oauth_pending');
-    }
-  }
-
-  if (code && pendingProvider === 'youtube') {
-    authScreen.style.display = 'flex';
-    appWrap.style.display = 'none';
-
-    const token = await exchangeGoogleCode(code);
-    history.replaceState(null, '', window.location.pathname);
-
-    if (token) {
-      const profile = await fetchGoogleProfile(token);
-      const displayName = profile?.name || profile?.email || 'youtube user';
-      localStorage.setItem(AUTH_STORAGE_KEY, 'youtube');
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
-        provider: 'youtube',
-        name: displayName,
-        id: profile?.id,
-        connectedAt: Date.now(),
-      }));
-      showApp('youtube');
       return;
     } else {
       sessionStorage.removeItem('vinyl_oauth_pending');
@@ -262,7 +234,7 @@ async function initAuth() {
       if (profile) {
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
           provider: 'spotify',
-          name: profile.display_name || profile.id || 'spotify user',
+          name: (profile.display_name && profile.display_name.trim()) || profile.email?.split('@')[0] || profile.id || 'spotify user',
           id: profile.id,
           connectedAt: Date.now(),
         }));
