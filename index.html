@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>groove — your sound diary</title>
+  <meta name="description"
+    content="A beautiful calendar journal where every day holds a soundtrack memory — connect your music app and capture the sound of your life." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=DM+Mono:ital,wght@0,300;1,300&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Spotify IFrame Embed API (no auth required for embeds) -->
+  <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+</head>
+
+<body>
+
+  <!-- Ambient background grain -->
+  <div class="grain-overlay"></div>
+
+  <!-- ============================================================ -->
+  <!-- AUTH SCREEN                                                   -->
+  <!-- ============================================================ -->
+  <div class="auth-screen" id="authScreen">
+    <div class="auth-bg-vinyl">
+      <div class="auth-vinyl-record" id="authVinyl">
+        <div class="auth-vinyl-grooves"></div>
+        <div class="auth-vinyl-label">
+          <div class="auth-vinyl-hole"></div>
+        </div>
+      </div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span class="auth-logo-icon">◎</span>
+        <span class="auth-logo-text">groove</span>
+      </div>
+      <p class="auth-tagline">your sound diary</p>
+      <h1 class="auth-headline">Every day has a<br /><em>soundtrack</em>.</h1>
+      <p class="auth-sub">Connect your music app to start saving the songs that defined your days.</p>
+
+      <div class="auth-buttons">
+        <button class="auth-btn auth-spotify" id="authSpotify" aria-label="Sign in with Spotify">
+          <svg class="auth-btn-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+          </svg>
+          <span class="auth-btn-text">Continue with Spotify</span>
+          <span class="auth-btn-arrow">→</span>
+        </button>
+        <button class="auth-btn auth-apple" id="authApple" aria-label="Sign in with Apple Music">
+          <svg class="auth-btn-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.048-2.31-2.18-3.043a6.926 6.926 0 00-1.87-.837 12.51 12.51 0 00-2.306-.35c-.032 0-.063-.007-.095-.01H6.699C6.661 0 6.621 0 6.581 0A11.4 11.4 0 005.32.11a6.34 6.34 0 00-2.21.643 6.944 6.944 0 00-2.168 1.878A6.586 6.586 0 00.5 4.6a12.048 12.048 0 00-.35 2.282c-.01.282-.013.563-.013.846v9.535c0 .282.003.562.013.846.038.982.17 1.937.462 2.86.364 1.12 1.006 2.048 1.917 2.79.81.657 1.733 1.027 2.726 1.197a12.754 12.754 0 002.29.354c.038.003.076.007.114.007H17.345c.038 0 .076-.004.114-.007a12.754 12.754 0 002.29-.354c1.15-.196 2.152-.62 3.013-1.377.824-.725 1.38-1.619 1.69-2.664.217-.742.342-1.504.373-2.276.008-.21.012-.423.012-.634 0-.034 0-.066-.003-.1V6.97c0-.283-.003-.564-.013-.846zM12 2.93c2.16 0 3.91 1.75 3.91 3.91 0 .27-.03.534-.085.791l-7.65 4.456a3.912 3.912 0 01-.087-.791C8.088 4.68 9.84 2.93 12 2.93zM19.1 17.61L12 21.7l-7.1-4.09V8.79L12 4.7l7.1 4.09v8.82z" />
+          </svg>
+          <span class="auth-btn-text">Continue with Apple Music</span>
+          <span class="auth-btn-arrow">→</span>
+        </button>
+        <button class="auth-btn auth-youtube" id="authYoutube" aria-label="Sign in with YouTube Music">
+          <svg class="auth-btn-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm4.8 12.96l-6.72 3.84A1.08 1.08 0 018.64 15.84V8.16a1.08 1.08 0 011.44-1.014l6.72 3.84a1.08 1.08 0 010 1.974z" />
+          </svg>
+          <span class="auth-btn-text">Continue with YouTube Music</span>
+          <span class="auth-btn-arrow">→</span>
+        </button>
+      </div>
+
+      <p class="auth-skip">
+        <button class="auth-skip-btn" id="authSkip">Skip for now — use file uploads only</button>
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MAIN APP (hidden until logged in)                            -->
+  <!-- ============================================================ -->
+  <div class="app-wrap" id="appWrap" style="display:none;">
+
+    <!-- Header -->
+    <header class="site-header">
+      <div class="header-inner">
+        <div class="logo">
+          <span class="logo-icon">◎</span>
+          <span class="logo-text">groove</span>
+        </div>
+        <nav class="header-nav">
+          <button class="nav-btn" id="prevMonthBtn" aria-label="Previous month">‹</button>
+          <div class="month-display">
+            <span id="monthName" class="month-name"></span>
+            <span id="yearName" class="year-name"></span>
+          </div>
+          <button class="nav-btn" id="nextMonthBtn" aria-label="Next month">›</button>
+        </nav>
+        <div class="header-right">
+          <div class="user-pill" id="userPill">
+            <span class="user-pill-dot" id="userPillDot"></span>
+            <span class="user-pill-label" id="userPillLabel">guest</span>
+            <button class="user-pill-logout" id="logoutBtn" title="Sign out">✕</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Calendar -->
+    <main class="calendar-container">
+      <div class="calendar-book">
+        <!-- Left page -->
+        <div class="book-page book-left">
+          <div class="book-left-content">
+            <div class="month-large-display">
+              <div class="month-number" id="monthNumberLeft"></div>
+              <div class="month-name-vertical" id="monthNameLeft"></div>
+            </div>
+            <div class="side-stats">
+              <div class="stat-item">
+                <span class="stat-value" id="totalMemories">0</span>
+                <span class="stat-label">memories saved</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value" id="totalDays"></span>
+                <span class="stat-label">days this month</span>
+              </div>
+            </div>
+            <div class="ambient-vinyl-display">
+              <div class="ambient-vinyl" id="ambientVinyl">
+                <div class="ambient-grooves"></div>
+                <div class="ambient-label">
+                  <div class="ambient-hole"></div>
+                </div>
+              </div>
+              <p class="ambient-text">click any date<br />to add a memory</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right page -->
+        <div class="book-page book-right">
+          <div class="weekdays-row">
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday">Sat</div>
+          </div>
+          <div class="days-grid" id="daysGrid"></div>
+        </div>
+      </div>
+    </main>
+
+  </div><!-- /.app-wrap -->
+
+  <!-- ============================================================ -->
+  <!-- MODAL: Add Memory                                            -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="addModal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <div class="modal-panel" id="addModalPanel">
+      <button class="modal-close" id="addModalClose" aria-label="Close">✕</button>
+      <div class="modal-header">
+        <div class="modal-date-badge" id="modalDateBadge"></div>
+        <h2 class="modal-title" id="addModalTitle">Add a Sound Memory</h2>
+        <p class="modal-subtitle">What was the sound of this day?</p>
+      </div>
+
+      <!-- Vinyl preview -->
+      <div class="modal-vinyl-preview">
+        <div class="vinyl-preview-record spinning-idle">
+          <div class="vp-grooves"></div>
+          <div class="vp-label">
+            <div class="vp-hole"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Song title -->
+      <div class="input-group">
+        <label class="input-label" for="songTitleInput">Song / Memory Title</label>
+        <input type="text" id="songTitleInput" class="text-input" placeholder="Name this memory..." maxlength="60" />
+      </div>
+
+      <!-- Note -->
+      <div class="input-group">
+        <label class="input-label" for="songNoteInput">A note for this day <span
+            class="optional">(optional)</span></label>
+        <textarea id="songNoteInput" class="text-input textarea" placeholder="What does this song mean to you today?"
+          maxlength="200" rows="2"></textarea>
+      </div>
+
+      <!-- Upload options -->
+      <div class="upload-section">
+        <div class="upload-tabs" id="uploadTabs">
+          <button class="upload-tab active" id="tabFile" data-tab="file">Upload File</button>
+          <button class="upload-tab" id="tabSpotify" data-tab="spotify">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+            </svg>
+            Spotify
+          </button>
+          <button class="upload-tab" id="tabApple" data-tab="apple">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.048-2.31-2.18-3.043a6.926 6.926 0 00-1.87-.837 12.51 12.51 0 00-2.306-.35c-.032 0-.063-.007-.095-.01H6.699C6.661 0 6.621 0 6.581 0A11.4 11.4 0 005.32.11a6.34 6.34 0 00-2.21.643 6.944 6.944 0 00-2.168 1.878A6.586 6.586 0 00.5 4.6a12.048 12.048 0 00-.35 2.282c-.01.282-.013.563-.013.846v9.535c0 .282.003.562.013.846.038.982.17 1.937.462 2.86.364 1.12 1.006 2.048 1.917 2.79.81.657 1.733 1.027 2.726 1.197a12.754 12.754 0 002.29.354c.038.003.076.007.114.007H17.345c.038 0 .076-.004.114-.007a12.754 12.754 0 002.29-.354c1.15-.196 2.152-.62 3.013-1.377.824-.725 1.38-1.619 1.69-2.664.217-.742.342-1.504.373-2.276.008-.21.012-.423.012-.634 0-.034 0-.066-.003-.1V6.97c0-.283-.003-.564-.013-.846zM12 2.93c2.16 0 3.91 1.75 3.91 3.91 0 .27-.03.534-.085.791l-7.65 4.456a3.912 3.912 0 01-.087-.791C8.088 4.68 9.84 2.93 12 2.93zM19.1 17.61L12 21.7l-7.1-4.09V8.79L12 4.7l7.1 4.09v8.82z" />
+            </svg>
+            Apple Music
+          </button>
+          <button class="upload-tab" id="tabYoutube" data-tab="youtube">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm4.8 12.96l-6.72 3.84A1.08 1.08 0 018.64 15.84V8.16a1.08 1.08 0 011.44-1.014l6.72 3.84a1.08 1.08 0 010 1.974z" />
+            </svg>
+            YouTube
+          </button>
+        </div>
+
+        <!-- File upload -->
+        <div class="tab-content active" id="tabContentFile">
+          <div class="file-drop-zone" id="fileDropZone">
+            <div class="drop-icon">♫</div>
+            <p class="drop-text">Drop your audio file here</p>
+            <p class="drop-subtext">or click to browse</p>
+            <input type="file" id="audioFileInput" accept="audio/*" hidden />
+          </div>
+          <div class="file-selected" id="fileSelected" style="display:none;">
+            <span class="file-icon">◉</span>
+            <span class="file-name" id="fileName"></span>
+            <button class="file-remove" id="fileRemove">✕</button>
+          </div>
+
+          <!-- File time range selector -->
+          <div class="clip-section" id="fileClipSection" style="display:none;">
+            <label class="input-label">Save just your favourite moment <span class="optional">(optional)</span></label>
+            <div class="clip-range-wrap">
+              <div class="clip-waveform" id="fileWaveform">
+                <div class="clip-waveform-bars" id="fileWaveformBars"></div>
+                <div class="clip-selection" id="fileClipSelection"></div>
+                <input type="range" class="clip-handle clip-handle-start" id="fileStartHandle" min="0" max="100"
+                  value="0" aria-label="Clip start" />
+                <input type="range" class="clip-handle clip-handle-end" id="fileEndHandle" min="0" max="100" value="100"
+                  aria-label="Clip end" />
+              </div>
+              <div class="clip-time-labels">
+                <span class="clip-time" id="fileClipStartLabel">0:00</span>
+                <span class="clip-duration-badge" id="fileClipDuration">full song</span>
+                <span class="clip-time" id="fileClipEndLabel">0:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spotify -->
+        <div class="tab-content" id="tabContentSpotify">
+          <div class="link-input-wrap">
+            <svg class="link-icon" viewBox="0 0 24 24" fill="currentColor"
+              style="width:14px;height:14px;flex-shrink:0;">
+              <path
+                d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+            </svg>
+            <input type="url" id="spotifyInput" class="text-input link-input"
+              placeholder="https://open.spotify.com/track/..." />
+          </div>
+          <p class="link-note">Paste a Spotify track link. Then select the exact moment in the song you loved.</p>
+
+          <!-- Spotify time range selector -->
+          <div class="clip-section" id="spotifyClipSection">
+            <label class="input-label">Select your favourite moment</label>
+            <div class="clip-manual-wrap">
+              <div class="clip-manual-row">
+                <div class="clip-manual-field">
+                  <label class="clip-manual-label" for="spotifyStartMin">Start</label>
+                  <div class="clip-manual-inputs">
+                    <input type="number" class="clip-num-input" id="spotifyStartMin" min="0" max="59" value="0"
+                      placeholder="mm" aria-label="Start minutes" />
+                    <span class="clip-colon">:</span>
+                    <input type="number" class="clip-num-input" id="spotifyStartSec" min="0" max="59" value="0"
+                      placeholder="ss" aria-label="Start seconds" />
+                  </div>
+                </div>
+                <div class="clip-arrow">→</div>
+                <div class="clip-manual-field">
+                  <label class="clip-manual-label" for="spotifyEndMin">End</label>
+                  <div class="clip-manual-inputs">
+                    <input type="number" class="clip-num-input" id="spotifyEndMin" min="0" max="59" value="3"
+                      placeholder="mm" aria-label="End minutes" />
+                    <span class="clip-colon">:</span>
+                    <input type="number" class="clip-num-input" id="spotifyEndSec" min="0" max="59" value="30"
+                      placeholder="ss" aria-label="End seconds" />
+                  </div>
+                </div>
+              </div>
+              <div class="clip-duration-info" id="spotifyClipInfo">Saving 3:30 of the track</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Apple Music -->
+        <div class="tab-content" id="tabContentApple">
+          <div class="link-input-wrap">
+            <svg class="link-icon" viewBox="0 0 24 24" fill="currentColor"
+              style="width:14px;height:14px;flex-shrink:0;">
+              <path
+                d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.048-2.31-2.18-3.043a6.926 6.926 0 00-1.87-.837 12.51 12.51 0 00-2.306-.35c-.032 0-.063-.007-.095-.01H6.699C6.661 0 6.621 0 6.581 0A11.4 11.4 0 005.32.11a6.34 6.34 0 00-2.21.643 6.944 6.944 0 00-2.168 1.878A6.586 6.586 0 00.5 4.6a12.048 12.048 0 00-.35 2.282c-.01.282-.013.563-.013.846v9.535c0 .282.003.562.013.846.038.982.17 1.937.462 2.86.364 1.12 1.006 2.048 1.917 2.79.81.657 1.733 1.027 2.726 1.197a12.754 12.754 0 002.29.354c.038.003.076.007.114.007H17.345c.038 0 .076-.004.114-.007a12.754 12.754 0 002.29-.354c1.15-.196 2.152-.62 3.013-1.377.824-.725 1.38-1.619 1.69-2.664.217-.742.342-1.504.373-2.276.008-.21.012-.423.012-.634 0-.034 0-.066-.003-.1V6.97c0-.283-.003-.564-.013-.846zM12 2.93c2.16 0 3.91 1.75 3.91 3.91 0 .27-.03.534-.085.791l-7.65 4.456a3.912 3.912 0 01-.087-.791C8.088 4.68 9.84 2.93 12 2.93zM19.1 17.61L12 21.7l-7.1-4.09V8.79L12 4.7l7.1 4.09v8.82z" />
+            </svg>
+            <input type="url" id="appleInput" class="text-input link-input" placeholder="https://music.apple.com/..." />
+          </div>
+          <p class="link-note">Paste an Apple Music song link. Then set the start and end time of your favourite moment.
+          </p>
+
+          <!-- Apple Music time range selector -->
+          <div class="clip-section" id="appleClipSection">
+            <label class="input-label">Select your favourite moment</label>
+            <div class="clip-manual-wrap">
+              <div class="clip-manual-row">
+                <div class="clip-manual-field">
+                  <label class="clip-manual-label" for="appleStartMin">Start</label>
+                  <div class="clip-manual-inputs">
+                    <input type="number" class="clip-num-input" id="appleStartMin" min="0" max="59" value="0"
+                      placeholder="mm" aria-label="Start minutes" />
+                    <span class="clip-colon">:</span>
+                    <input type="number" class="clip-num-input" id="appleStartSec" min="0" max="59" value="0"
+                      placeholder="ss" aria-label="Start seconds" />
+                  </div>
+                </div>
+                <div class="clip-arrow">→</div>
+                <div class="clip-manual-field">
+                  <label class="clip-manual-label" for="appleEndMin">End</label>
+                  <div class="clip-manual-inputs">
+                    <input type="number" class="clip-num-input" id="appleEndMin" min="0" max="59" value="3"
+                      placeholder="mm" aria-label="End minutes" />
+                    <span class="clip-colon">:</span>
+                    <input type="number" class="clip-num-input" id="appleEndSec" min="0" max="59" value="30"
+                      placeholder="ss" aria-label="End seconds" />
+                  </div>
+                </div>
+              </div>
+              <div class="clip-duration-info" id="appleClipInfo">Saving 3:30 of the track</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- YouTube -->
+        <div class="tab-content" id="tabContentYoutube">
+          <div class="link-input-wrap">
+            <svg class="link-icon" viewBox="0 0 24 24" fill="currentColor"
+              style="width:14px;height:14px;flex-shrink:0;">
+              <path
+                d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm4.8 12.96l-6.72 3.84A1.08 1.08 0 018.64 15.84V8.16a1.08 1.08 0 011.44-1.014l6.72 3.84a1.08 1.08 0 010 1.974z" />
+            </svg>
+            <input type="url" id="youtubeInput" class="text-input link-input"
+              placeholder="https://youtube.com/watch?v=..." />
+          </div>
+          <p class="link-note">Paste a YouTube link. Set your favourite moment — groove will remember that exact
+            section.
+          </p>
+
+          <!-- YouTube time range selector -->
+          <div class="clip-section" id="youtubeClipSection">
+            <label class="input-label">Select your favourite moment</label>
+            <div class="clip-manual-wrap">
+              <div class="clip-manual-row">
+                <div class="clip-manual-field">
+                  <label class="clip-manual-label" for="ytStartMin">Start</label>
+                  <div class="clip-manual-inputs">
+                    <input type="number" class="clip-num-input" id="ytStartMin" min="0" max="59" value="0"
+                      placeholder="mm" aria-label="Start minutes" />
+                    <span class="clip-colon">:</span>
+                    <input type="number" class="clip-num-input" id="ytStartSec" min="0" max="59" value="0"
+                      placeholder="ss" aria-label="Start seconds" />
+                  </div>
+                </div>
+                <div class="clip-arrow">→</div>
+                <div class="clip-manual-field">
+                  <label class="clip-manual-label" for="ytEndMin">End</label>
+                  <div class="clip-manual-inputs">
+                    <input type="number" class="clip-num-input" id="ytEndMin" min="0" max="59" value="3"
+                      placeholder="mm" aria-label="End minutes" />
+                    <span class="clip-colon">:</span>
+                    <input type="number" class="clip-num-input" id="ytEndSec" min="0" max="59" value="30"
+                      placeholder="ss" aria-label="End seconds" />
+                  </div>
+                </div>
+              </div>
+              <div class="clip-duration-info" id="youtubeClipInfo">Saving 3:30 of the track</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Color picker -->
+      <div class="color-section">
+        <label class="input-label">Record Label Color</label>
+        <div class="color-swatches" id="colorSwatches">
+          <button class="swatch active" data-color="#e8d5b7" style="background:#e8d5b7;" aria-label="Cream"></button>
+          <button class="swatch" data-color="#c4a882" style="background:#c4a882;" aria-label="Tan"></button>
+          <button class="swatch" data-color="#8b7355" style="background:#8b7355;" aria-label="Brown"></button>
+          <button class="swatch" data-color="#6b8e7f" style="background:#6b8e7f;" aria-label="Sage"></button>
+          <button class="swatch" data-color="#7c8fad" style="background:#7c8fad;" aria-label="Steel Blue"></button>
+          <button class="swatch" data-color="#a87c8e" style="background:#a87c8e;" aria-label="Mauve"></button>
+          <button class="swatch" data-color="#c17c5a" style="background:#c17c5a;" aria-label="Terracotta"></button>
+          <button class="swatch" data-color="#e2c4c4" style="background:#e2c4c4;" aria-label="Blush"></button>
+        </div>
+      </div>
+
+      <button class="save-btn" id="saveMemoryBtn">
+        <span class="save-icon">◎</span>
+        Press into wax
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: Play Memory                                           -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="playModal" role="dialog" aria-modal="true" aria-labelledby="playModalTitle">
+    <div class="modal-panel play-panel" id="playModalPanel">
+      <button class="modal-close" id="playModalClose" aria-label="Close">✕</button>
+
+      <!-- Vinyl Player -->
+      <div class="player-stage">
+        <div class="player-arm-container">
+          <div class="tonearm" id="tonearm">
+            <div class="tonearm-pivot"></div>
+            <div class="tonearm-body"></div>
+            <div class="tonearm-head"></div>
+          </div>
+        </div>
+        <div class="player-record-wrap">
+          <div class="player-vinyl" id="playerVinyl" title="Click to play / pause" role="button" tabindex="0"
+            aria-label="Play or pause">
+            <div class="player-grooves"></div>
+            <div class="player-label" id="playerLabel">
+              <div class="player-hole"></div>
+              <div class="player-label-text" id="playerLabelText"></div>
+            </div>
+            <div class="vinyl-play-hint" id="vinylPlayHint">
+              <span class="vinyl-hint-icon">▶</span>
+            </div>
+          </div>
+          <div class="player-shadow"></div>
+        </div>
+      </div>
+
+      <!-- Clip badge (shown when a moment is saved) -->
+      <div class="clip-badge" id="clipBadge" style="display:none;">
+        <span class="clip-badge-icon">✂</span>
+        <span class="clip-badge-text" id="clipBadgeText">Favourite moment: 1:00 – 2:30</span>
+      </div>
+
+      <!-- Embedded player (Spotify / YouTube / Apple Music inline) -->
+      <div class="embedded-player-wrap" id="embeddedPlayerWrap" style="display:none;">
+        <div class="embedded-player-container" id="embeddedPlayerContainer"></div>
+        <div class="embed-open-link-row" id="embedOpenLinkRow"></div>
+      </div>
+
+      <!-- Track info -->
+      <div class="player-info">
+        <div class="player-date" id="playerDate"></div>
+        <h2 class="player-title" id="playModalTitle">Song Title</h2>
+        <p class="player-note" id="playerNote"></p>
+      </div>
+
+      <!-- Controls -->
+      <div class="player-controls" id="playerControls">
+        <audio id="audioPlayer" preload="auto"></audio>
+        <div class="progress-wrap">
+          <div class="progress-bar-bg" id="progressBg">
+            <div class="progress-bar-fill" id="progressFill"></div>
+            <!-- Clip range overlay (for file clips) -->
+            <div class="progress-clip-overlay" id="progressClipOverlay" style="display:none;"></div>
+          </div>
+          <div class="time-labels">
+            <span id="currentTime">0:00</span>
+            <span id="totalTime">0:00</span>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <button class="ctrl-btn" id="restartBtn" aria-label="Restart">⟪</button>
+          <button class="ctrl-btn play-pause-btn" id="playPauseBtn" aria-label="Play/Pause"><span
+              class="pp-icon">▶</span></button>
+          <button class="ctrl-btn" id="muteBtn" aria-label="Mute">♪</button>
+        </div>
+
+        <!-- External link -->
+        <div class="external-link-area" id="externalLinkArea" style="display:none;">
+          <a class="external-link-btn" id="externalLinkBtn" href="#" target="_blank" rel="noopener">
+            <span id="externalLinkIcon"></span>
+            <span id="externalLinkLabel">Open in Spotify</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Delete button -->
+      <button class="delete-btn" id="deleteMemoryBtn">Remove this memory</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
