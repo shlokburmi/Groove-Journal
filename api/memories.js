@@ -1,5 +1,5 @@
-const dbConnect = require('../db');
-const UserMemories = require('../models/UserMemories');
+const dbConnect = require('./db');
+const UserMemories = require('./models/UserMemories');
 
 export default async function handler(req, res) {
     // Required body limit to support base64 audio data
