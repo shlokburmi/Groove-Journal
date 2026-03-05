@@ -1,7 +1,7 @@
 const dbConnect = require('./db');
 const UserMemories = require('./models/UserMemories');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Required body limit to support base64 audio data
     await dbConnect();
 
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     res.status(405).end(`Method ${req.method} Not Allowed`);
 }
 
-export const config = {
+module.exports.config = {
     api: {
         bodyParser: {
             sizeLimit: '4mb', // Set reasonably for audio files stored as base64
