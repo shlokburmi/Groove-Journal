@@ -196,6 +196,7 @@ async function initAuth() {
       connectedAt: Date.now(),
     }));
     showApp('youtube');
+    if (profile?.id) loadMemoriesFromCloud(profile.id);
     return;
   }
 
@@ -222,6 +223,7 @@ async function initAuth() {
         connectedAt: Date.now(),
       }));
       showApp('spotify');
+      if (profile?.id) loadMemoriesFromCloud(profile.id);
       return;
     } else {
       sessionStorage.removeItem('vinyl_oauth_pending');
@@ -259,6 +261,10 @@ async function initAuth() {
       }
     }
     showApp(saved);
+    const userInfo = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+    if (userInfo && userInfo.id) {
+      loadMemoriesFromCloud(userInfo.id);
+    }
   } else {
     authScreen.style.display = 'flex';
     appWrap.style.display = 'none';
@@ -468,8 +474,45 @@ function loadMemories() {
   catch { return {}; }
 }
 
+async function loadMemoriesFromCloud(userId) {
+  try {
+    const res = await fetch('/api/memories', {
+      headers: { 'x-user-id': userId }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      state.memories = data.memories || {};
+      localStorage.setItem('vinyl_memories', JSON.stringify(state.memories));
+      renderCalendar();
+    }
+  } catch (e) {
+    console.error('Failed to load memories from cloud:', e);
+  }
+}
+
+let apiSyncTimeout = null;
+
 function saveMemories() {
   localStorage.setItem('vinyl_memories', JSON.stringify(state.memories));
+
+  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  if (user && user.id) {
+    clearTimeout(apiSyncTimeout);
+    apiSyncTimeout = setTimeout(async () => {
+      try {
+        await fetch('/api/memories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': user.id
+          },
+          body: JSON.stringify({ memories: state.memories })
+        });
+      } catch (e) {
+        console.error('Cloud sync failed:', e);
+      }
+    }, 1000);
+  }
 }
 
 // ── Date helpers ───────────────────────────────────────────────────────
