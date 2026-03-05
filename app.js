@@ -219,11 +219,15 @@ async function initAuth() {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
         provider: 'spotify',
         name: displayName,
-        id: profile?.id || 'spotify',
+        id: profile?.id || 'spotify_guest',
         connectedAt: Date.now(),
       }));
       showApp('spotify');
-      if (profile?.id) loadMemoriesFromCloud(profile.id);
+
+      // Load cloud memories only if we successfully retrieved the user's true ID
+      if (profile?.id) {
+        loadMemoriesFromCloud(profile.id);
+      }
       return;
     } else {
       sessionStorage.removeItem('vinyl_oauth_pending');
