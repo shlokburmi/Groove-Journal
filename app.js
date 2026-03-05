@@ -213,12 +213,7 @@ async function initAuth() {
       if (profile) {
         displayName = (profile.display_name && profile.display_name.trim()) || profile.email?.split('@')[0] || profile.id || null;
       }
-      // If profile fetch failed (e.g. no Premium), ask user for their name
-      if (!displayName) {
-        displayName = prompt('Welcome! Spotify requires Premium for auto-detection.\nPlease enter your display name:');
-        if (!displayName || !displayName.trim()) displayName = 'music lover';
-        displayName = displayName.trim();
-      }
+      if (!displayName) displayName = 'spotify';
       localStorage.setItem(AUTH_STORAGE_KEY, 'spotify');
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
         provider: 'spotify',
