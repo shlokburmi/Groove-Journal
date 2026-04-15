@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "dependencies": {
     "date-fns": "^4.1.0",
+    "express": "^5.2.1",
     "framer-motion": "^12.38.0",
     "mongoose": "^8.2.0",
     "react-calendar-heatmap": "^1.10.0",
