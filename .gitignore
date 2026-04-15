@@ -3,6 +3,3 @@
 .env*.local
 node_modules/
 .env.local
-.env.local
-
-.env.local
