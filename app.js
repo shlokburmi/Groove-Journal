@@ -421,6 +421,10 @@ const playerLabelText = $('playerLabelText');
 const playerDate = $('playerDate');
 const playerTitleEl = $('playModalTitle');
 const playerNote = $('playerNote');
+const playerAnalytics = $('playerAnalytics');
+const playerMood = $('playerMood');
+const playerEnergyFill = $('playerEnergyFill');
+const playerTags = $('playerTags');
 const tonearm = $('tonearm');
 const audioPlayer = $('audioPlayer');
 const progressBg = $('progressBg');
@@ -996,6 +1000,38 @@ function openPlayModal(key) {
   if (playerNote) playerNote.textContent = memory.note || '';
   if (playerLabel) playerLabel.style.background = memory.color || '#e8d5b7';
   if (playerLabelText) playerLabelText.textContent = (memory.title || '').toUpperCase().slice(0, 12);
+
+  // AI Mood Analytics Display
+  if (playerAnalytics) {
+    if (memory.mood) {
+      playerAnalytics.style.display = 'block';
+      if (playerMood) playerMood.textContent = memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1);
+      
+      if (playerEnergyFill && memory.energy !== undefined) {
+        playerEnergyFill.style.width = (memory.energy * 100) + '%';
+        let color = 'var(--accent)';
+        if (memory.energy > 0.7) color = '#ff7b72'; // high energy red
+        else if (memory.energy < 0.4) color = '#79c0ff'; // low energy blue
+        else color = '#d2a8ff'; // medium energy purple
+        playerEnergyFill.style.background = color;
+      }
+      
+      if (playerTags) {
+        playerTags.innerHTML = '';
+        if (memory.tags && Array.isArray(memory.tags)) {
+          memory.tags.forEach(tag => {
+            const span = document.createElement('span');
+            span.textContent = '#' + tag;
+            span.style.cssText = 'background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.08); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;';
+            playerTags.appendChild(span);
+          });
+        }
+      }
+    } else {
+      playerAnalytics.style.display = 'none';
+      if (playerTags) playerTags.innerHTML = '';
+    }
+  }
 
   if (audioPlayer) {
     audioPlayer.pause();

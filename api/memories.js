@@ -1,5 +1,6 @@
 const dbConnect = require('./db');
 const UserMemories = require('./models/UserMemories');
+const moodService = require('./services/moodService');
 
 module.exports = async function handler(req, res) {
     // Required body limit to support base64 audio data
@@ -26,6 +27,19 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
         try {
             const { memories } = req.body;
+
+            // Process AI Mood Detection
+            if (memories) {
+                for (const date in memories) {
+                    const memory = memories[date];
+                    if (memory && (!memory.mood || memory.energy === undefined)) {
+                        const analytics = await moodService.analyzeMood(memory.title || '', memory.note || '');
+                        memory.mood = analytics.mood;
+                        memory.energy = analytics.energy;
+                        memory.tags = analytics.tags;
+                    }
+                }
+            }
 
             const userDoc = await UserMemories.findOneAndUpdate(
                 { userId },

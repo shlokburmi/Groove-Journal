@@ -475,6 +475,21 @@
         <div class="player-date" id="playerDate"></div>
         <h2 class="player-title" id="playModalTitle">Song Title</h2>
         <p class="player-note" id="playerNote"></p>
+        
+        <!-- AI Mood Analytics -->
+        <div class="player-analytics" id="playerAnalytics" style="display:none; margin-top: 15px; font-size: 0.85rem; color: var(--ink-secondary);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <span style="font-weight: 500; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase;">Mood</span>
+            <span id="playerMood" style="background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Calm</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight: 500; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase;">Energy</span>
+            <div style="width: 100px; height: 6px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden; position: relative;">
+              <div id="playerEnergyFill" style="height: 100%; width: 50%; background: var(--accent); border-radius: 3px;"></div>
+            </div>
+          </div>
+          <div id="playerTags" style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;"></div>
+        </div>
       </div>
 
       <!-- Controls -->
