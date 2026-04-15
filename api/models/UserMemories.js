@@ -12,7 +12,8 @@ const MemorySchema = new mongoose.Schema({
     clipEnd: Number,
     mood: String,
     energy: Number,
-    tags: [String]
+    tags: [String],
+    embedding: [Number]
 }, { _id: false }); // Prevents creating independent IDs for subdocuments to keep it identical to local storage
 
 const UserMemoriesSchema = new mongoose.Schema({

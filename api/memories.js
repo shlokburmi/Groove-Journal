@@ -27,16 +27,27 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
         try {
             const { memories } = req.body;
+            // Lazy load to prevent breaking other paths easily
+            const embeddingService = require('./services/embeddingService');
 
-            // Process AI Mood Detection
+            // Process AI Mood Detection & Vector Embeddings
             if (memories) {
                 for (const date in memories) {
                     const memory = memories[date];
-                    if (memory && (!memory.mood || memory.energy === undefined)) {
-                        const analytics = await moodService.analyzeMood(memory.title || '', memory.note || '');
-                        memory.mood = analytics.mood;
-                        memory.energy = analytics.energy;
-                        memory.tags = analytics.tags;
+                    if (memory) {
+                        // 1. Mood AI
+                        if (!memory.mood || memory.energy === undefined) {
+                            const analytics = await moodService.analyzeMood(memory.title || '', memory.note || '');
+                            memory.mood = analytics.mood;
+                            memory.energy = analytics.energy;
+                            memory.tags = analytics.tags;
+                        }
+
+                        // 2. Vector Embedding
+                        if (!memory.embedding || memory.embedding.length === 0) {
+                            const textToEmbed = `Title: ${memory.title || ''} Artist: ${memory.artist || ''} Note: ${memory.note || ''} Mood: ${memory.mood || ''} Tags: ${Array.isArray(memory.tags) ? memory.tags.join(', ') : ''}`;
+                            memory.embedding = await embeddingService.generateEmbedding(textToEmbed);
+                        }
                     }
                 }
             }
