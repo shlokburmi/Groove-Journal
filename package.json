@@ -2,6 +2,10 @@
   "name": "groove",
   "version": "1.0.0",
   "dependencies": {
-    "mongoose": "^8.2.0"
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.38.0",
+    "mongoose": "^8.2.0",
+    "react-calendar-heatmap": "^1.10.0",
+    "recharts": "^3.8.1"
   }
 }
