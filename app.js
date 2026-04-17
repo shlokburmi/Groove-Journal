@@ -13,11 +13,15 @@ const SPOTIFY_TOKEN_EXPIRY_KEY = 'vinyl_spotify_token_expiry';
 const GOOGLE_TOKEN_KEY = 'vinyl_google_token';
 const GOOGLE_TOKEN_EXPIRY_KEY = 'vinyl_google_token_expiry';
 
-const authScreen = document.getElementById('authScreen');
-const appWrap = document.getElementById('appWrap');
-const userPillDot = document.getElementById('userPillDot');
-const userPillLabel = document.getElementById('userPillLabel');
-const logoutBtn = document.getElementById('logoutBtn');
+// ── DOM refs ───────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+const authScreen = $('authScreen');
+const appWrap = $('appWrap');
+const userPillDot = $('userPillDot');
+const userPillLabel = $('userPillLabel');
+const logoutBtn = $('logoutBtn');
 
 const PROVIDER_META = {
   spotify: { label: 'spotify', dotClass: 'spotify', color: '#1DB954' },
@@ -70,6 +74,7 @@ async function startSpotifyLogin() {
   url.searchParams.set('code_challenge', codeChallenge);
   url.searchParams.set('show_dialog', 'true');
 
+  console.log('Redirecting to Spotify:', url.toString());
   window.location.href = url.toString();
 }
 
@@ -305,22 +310,37 @@ function highlightAuthTab(provider) {
 }
 
 // Wire up auth buttons
-document.getElementById('authSpotify').addEventListener('click', () => {
-  showAuthLoading('authSpotify');
-  setTimeout(() => startSpotifyLogin(), 400);
-});
+const authSpotifyBtn = $('authSpotify');
+if (authSpotifyBtn) {
+  authSpotifyBtn.addEventListener('click', () => {
+    console.log('Spotify login clicked');
+    showAuthLoading('authSpotify');
+    setTimeout(() => startSpotifyLogin(), 400);
+  });
+}
 
-document.getElementById('authApple').addEventListener('click', () => {
-  showAuthLoading('authApple');
-  setTimeout(() => showApp('apple'), 800);
-});
+const authAppleBtn = $('authApple');
+if (authAppleBtn) {
+  authAppleBtn.addEventListener('click', () => {
+    console.log('Apple login clicked');
+    showAuthLoading('authApple');
+    setTimeout(() => showApp('apple'), 800);
+  });
+}
 
-document.getElementById('authYoutube').addEventListener('click', () => {
-  showAuthLoading('authYoutube');
-  setTimeout(() => startGoogleLogin(), 400);
-});
+const authYoutubeBtn = $('authYoutube');
+if (authYoutubeBtn) {
+  authYoutubeBtn.addEventListener('click', () => {
+    console.log('YouTube login clicked');
+    showAuthLoading('authYoutube');
+    setTimeout(() => startGoogleLogin(), 400);
+  });
+}
 
-document.getElementById('authSkip').addEventListener('click', () => showApp('guest'));
+const authSkipBtn = $('authSkip');
+if (authSkipBtn) {
+  authSkipBtn.addEventListener('click', () => showApp('guest'));
+}
 
 function showAuthLoading(btnId) {
   const btn = document.getElementById(btnId);
@@ -353,10 +373,15 @@ logoutBtn.addEventListener('click', () => {
 
 const userPill = $('userPill');
 if (userPill) {
-  userPill.addEventListener('click', () => {
+  userPill.addEventListener('click', (e) => {
+    e.stopPropagation();
     logoutBtn.style.display = (logoutBtn.style.display === 'none' || !logoutBtn.style.display) ? 'block' : 'none';
   });
 }
+
+window.addEventListener('click', () => {
+  if (logoutBtn) logoutBtn.style.display = 'none';
+});
 
 // ── State ─────────────────────────────────────────────────────────────
 const state = {
@@ -381,17 +406,12 @@ const MONTH_NUMBERS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10
 const TODAY = new Date();
 const TODAY_KEY = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 
-// ── DOM refs ───────────────────────────────────────────────────────────
-const $ = id => document.getElementById(id);
-const $$ = sel => document.querySelectorAll(sel);
-
-// Calendar
+// Calendar components
 const largeDayNumber = $('largeDayNumber');
 const largeMonthName = $('largeMonthName');
 const totalMemories = $('totalMemories');
 const totalDaysEl = $('totalDays');
 const daysGrid = $('daysGrid');
-const heroTitle = document.querySelector('.hero-title');
 
 // Add modal
 const addModal = $('addModal');
@@ -608,12 +628,12 @@ function createDayCell(y, m, d, otherMonth) {
 
   if (memory) {
     cell.classList.add('has-memory');
-    const meta = document.createElement('div');
-    meta.className = 'day-meta-dots';
-    const dot = document.createElement('div');
-    dot.className = 'day-dot';
-    meta.appendChild(dot);
-    cell.appendChild(meta);
+    const vinylWrap = document.createElement('div');
+    vinylWrap.className = 'day-vinyl-container';
+    const vinyl = document.createElement('div');
+    vinyl.className = 'day-vinyl';
+    vinylWrap.appendChild(vinyl);
+    cell.appendChild(vinylWrap);
   }
 
   cell.addEventListener('click', () => {
@@ -931,6 +951,9 @@ function setupYouTubeEmbed(videoId, clipStart, clipEnd, originalLink) {
     }
   };
 
+  // Pre-check if video might be restricted (optional, but good for UX)
+  // For now we rely on onError which the user saw.
+
   if (window.YT && window.YT.Player) {
     doCreate();
   } else {
@@ -1001,7 +1024,7 @@ function openPlayModal(key) {
     if (memory.mood) {
       playerAnalytics.style.display = 'block';
       if (playerMood) playerMood.textContent = memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1);
-      
+
       if (playerEnergyFill && memory.energy !== undefined) {
         playerEnergyFill.style.width = (memory.energy * 100) + '%';
         let color = 'var(--accent)';
@@ -1010,7 +1033,7 @@ function openPlayModal(key) {
         else color = '#d2a8ff'; // medium energy purple
         playerEnergyFill.style.background = color;
       }
-      
+
       if (playerTags) {
         playerTags.innerHTML = '';
         if (memory.tags && Array.isArray(memory.tags)) {
@@ -1103,10 +1126,14 @@ function closePlayModal() {
 }
 
 
-// ── Play state helper (updates vinyl + tonearm) ─────────────────────────
+// ── Audio Cleanup ─────────────────────────────────────────────────────
 const vinylPlayHint = document.getElementById('vinylPlayHint');
 
 function setPlayState(playing) {
+  console.log("DEBUG: setPlayState called with:", playing);
+  if (typeof auth !== 'undefined' && auth.onAuthStateChanged) {
+    auth.onAuthStateChanged(user => console.log("DEBUG: Auth state:", user ? user.uid : "logged out"));
+  }
   state.isPlaying = playing;
   const hintIcon = vinylPlayHint ? vinylPlayHint.querySelector('.vinyl-hint-icon') : null;
 
@@ -1117,7 +1144,6 @@ function setPlayState(playing) {
     playPauseBtn.innerHTML = '<span class="pp-icon">⏸</span>';
     playPauseBtn.classList.add('playing');
     if (hintIcon) hintIcon.textContent = '⏸';
-    updateNowRecordingUI(true);
   } else {
     playerVinyl.classList.remove('playing');
     playerVinyl.classList.add('lifting');
@@ -1126,35 +1152,9 @@ function setPlayState(playing) {
     playPauseBtn.classList.remove('playing');
     if (hintIcon) hintIcon.textContent = '▶';
     setTimeout(() => playerVinyl.classList.remove('lifting'), 600);
-    updateNowRecordingUI(false);
   }
 }
 
-function updateNowRecordingUI(active) {
-  const pill = $('nowRecordingPill');
-  if (!pill) return;
-  
-  if (active) {
-    const memory = state.memories[state.activeMemory];
-    const title = pill.querySelector('.pill-title');
-    const sub = pill.querySelector('.pill-sub');
-    
-    if (title) title.textContent = memory ? memory.title : 'Atmosphere';
-    if (sub) sub.textContent = memory ? 'JOURNALING THE RHYTHM' : 'AMBIENT VIBES';
-    
-    pill.classList.add('active');
-    pill.style.transform = 'translateY(0)';
-    pill.style.opacity = '1';
-    pill.style.visibility = 'visible';
-  } else {
-    pill.classList.remove('active');
-    pill.style.transform = 'translateY(100px)';
-    pill.style.opacity = '0';
-    setTimeout(() => {
-      pill.style.visibility = 'hidden';
-    }, 500);
-  }
-}
 
 // Keyboard accessibility for vinyl
 playerVinyl.addEventListener('keydown', e => {
@@ -1699,7 +1699,7 @@ async function runSearch() {
   try {
     const res = await fetch('/api/search', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'x-user-id': user.id
       },
@@ -1739,7 +1739,7 @@ function renderSearchResults(results) {
       </div>
       <div class="search-result-meta">
         <div>${formatDisplayDate(res.date)}</div>
-        <div style="color: var(--accent-warm); opacity:0.8; margin-top:4px;">${Math.round(res.similarityScore * 100)}% match</div>
+        <div style="color: var(--accent-warm); opacity:0.8; margin-top:4px;">${Math.round((res.finalScore || 0) * 100)}% match</div>
       </div>
     `;
     item.addEventListener('click', () => {
@@ -1775,7 +1775,7 @@ function renderAnalytics(data) {
     data.topArtists.slice(0, 5).forEach(art => {
       const li = document.createElement('li');
       li.className = 'analytics-list-item';
-      li.innerHTML = `<span>${art.artist}</span><span style="opacity:0.5">${art.count} times</span>`;
+      li.innerHTML = `<span>${art.item}</span><span style="opacity:0.5">${art.count} times</span>`;
       topArtistsList.appendChild(li);
     });
   } else {
@@ -1784,7 +1784,7 @@ function renderAnalytics(data) {
 
   // Mood Chart
   if (moodChartInstance) moodChartInstance.destroy();
-  
+
   const ctx = moodChartCanvas.getContext('2d');
   const moodLabels = Object.keys(data.moodDistribution || {});
   const moodData = Object.values(data.moodDistribution || {});
@@ -1797,16 +1797,31 @@ function renderAnalytics(data) {
         datasets: [{
           data: moodData,
           backgroundColor: ['#c8a97e', '#8b7355', '#6b8e7f', '#7c8fad', '#a87c8e', '#c17c5a'],
+          hoverOffset: 10,
           borderWidth: 0
         }]
       },
       options: {
         cutout: '70%',
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#9b9287', font: { family: 'DM Mono', size: 10 } } }
+          legend: { 
+            position: 'bottom', 
+            labels: { 
+              color: '#9b9287', 
+              padding: 20,
+              font: { family: 'DM Mono', size: 10 } 
+            } 
+          }
         }
       }
     });
+    moodChartCanvas.style.display = 'block';
+    const noData = $('moodNoData');
+    if (noData) noData.style.display = 'none';
+  } else {
+    moodChartCanvas.style.display = 'none';
+    const noData = $('moodNoData');
+    if (noData) noData.style.display = 'block';
   }
 }
 
@@ -1836,83 +1851,83 @@ async function startTimeline() {
 }
 
 function showTimelineItem(idx) {
-    if (idx < 0 || idx >= timelineItems.length) return;
-    timelineIdx = idx;
-    const item = timelineItems[idx];
+  if (idx < 0 || idx >= timelineItems.length) return;
+  timelineIdx = idx;
+  const item = timelineItems[idx];
 
-    timelineDate.textContent = formatDisplayDate(item.date);
-    timelineTitle.textContent = item.title || 'Untitled';
-    timelineArtist.textContent = item.artist || '';
-    timelineNote.textContent = item.note || '';
-    
-    timelineTags.innerHTML = '';
-    if (item.tags) {
-        item.tags.forEach(t => {
-            const span = document.createElement('span');
-            span.textContent = '#' + t;
-            timelineTags.appendChild(span);
-        });
+  timelineDate.textContent = formatDisplayDate(item.date);
+  timelineTitle.textContent = item.title || 'Untitled';
+  timelineArtist.textContent = item.artist || '';
+  timelineNote.textContent = item.note || '';
+
+  timelineTags.innerHTML = '';
+  if (item.tags) {
+    item.tags.forEach(t => {
+      const span = document.createElement('span');
+      span.textContent = '#' + t;
+      timelineTags.appendChild(span);
+    });
+  }
+
+  // Progress reset
+  if (timelineInterval) clearInterval(timelineInterval);
+  let p = 0;
+  timelineProgress.style.width = '0%';
+
+  // Auto transition after 5 seconds
+  timelineInterval = setInterval(() => {
+    p += (2 / timelineSpeed);
+    timelineProgress.style.width = p + '%';
+    if (p >= 100) {
+      clearInterval(timelineInterval);
+      if (timelineIdx < timelineItems.length - 1) {
+        showTimelineItem(timelineIdx + 1);
+      } else {
+        timelineModal.classList.remove('open');
+      }
     }
-
-    // Progress reset
-    if (timelineInterval) clearInterval(timelineInterval);
-    let p = 0;
-    timelineProgress.style.width = '0%';
-    
-    // Auto transition after 5 seconds
-    timelineInterval = setInterval(() => {
-        p += (2 / timelineSpeed);
-        timelineProgress.style.width = p + '%';
-        if (p >= 100) {
-            clearInterval(timelineInterval);
-            if (timelineIdx < timelineItems.length - 1) {
-                showTimelineItem(timelineIdx + 1);
-            } else {
-                timelineModal.classList.remove('open');
-            }
-        }
-    }, 100 * timelineSpeed);
+  }, 100 * timelineSpeed);
 }
 
 // ── Event Listeners ─────────────────────────────────────────────────────
 searchNavBtn.addEventListener('click', () => searchModal.classList.add('open'));
 analyticsNavBtn.addEventListener('click', () => {
-    analyticsModal.classList.add('open');
-    loadAnalytics();
+  analyticsModal.classList.add('open');
+  loadAnalytics();
 });
 timelineNavBtn.addEventListener('click', startTimeline);
 
 $('searchModalClose').addEventListener('click', () => searchModal.classList.remove('open'));
 $('analyticsModalClose').addEventListener('click', () => analyticsModal.classList.remove('open'));
 $('timelineModalClose').addEventListener('click', () => {
-    timelineModal.classList.remove('open');
-    if (timelineInterval) clearInterval(timelineInterval);
+  timelineModal.classList.remove('open');
+  if (timelineInterval) clearInterval(timelineInterval);
 });
 
 aiSearchBtn.addEventListener('click', runSearch);
 aiSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') runSearch(); });
 
 $('timelineNextBtn').addEventListener('click', () => {
-    if (timelineIdx < timelineItems.length - 1) showTimelineItem(timelineIdx + 1);
+  if (timelineIdx < timelineItems.length - 1) showTimelineItem(timelineIdx + 1);
 });
 $('timelinePrevBtn').addEventListener('click', () => {
-    if (timelineIdx > 0) showTimelineItem(timelineIdx - 1);
+  if (timelineIdx > 0) showTimelineItem(timelineIdx - 1);
 });
 $('timelinePlayPauseBtn').addEventListener('click', () => {
-    if (timelineInterval) {
-        clearInterval(timelineInterval);
-        timelineInterval = null;
-        $('timelinePlayPauseBtn').textContent = '▶';
-    } else {
-        showTimelineItem(timelineIdx);
-        $('timelinePlayPauseBtn').textContent = '||';
-    }
+  if (timelineInterval) {
+    clearInterval(timelineInterval);
+    timelineInterval = null;
+    $('timelinePlayPauseBtn').textContent = '▶';
+  } else {
+    showTimelineItem(timelineIdx);
+    $('timelinePlayPauseBtn').textContent = '||';
+  }
 });
 timelineSpeedBtn.addEventListener('click', () => {
-    if (timelineSpeed === 1) timelineSpeed = 0.5;
-    else if (timelineSpeed === 0.5) timelineSpeed = 2;
-    else timelineSpeed = 1;
-    timelineSpeedBtn.textContent = timelineSpeed + 'x';
+  if (timelineSpeed === 1) timelineSpeed = 0.5;
+  else if (timelineSpeed === 0.5) timelineSpeed = 2;
+  else timelineSpeed = 1;
+  timelineSpeedBtn.textContent = timelineSpeed + 'x';
 });
 
 // ── Profile Logic ──────────────────────────────────────────────────────
@@ -1926,74 +1941,74 @@ const profileShareSection = $('profileShareSection');
 const publicLinkInput = $('publicLinkInput');
 
 async function loadProfile() {
-    const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
-    if (!user || !user.id) return;
+  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  if (!user || !user.id) return;
 
-    try {
-        const res = await fetch(`/api/user?action=profile`, {
-            headers: { 'x-user-id': user.id }
-        });
-        if (res.ok) {
-            const profile = await res.json();
-            usernameInput.value = profile.username || '';
-            bioInput.value = profile.bio || '';
-            publicProfileToggle.checked = profile.isPublic || false;
-            
-            if (profile.username) {
-                profileShareSection.style.display = 'block';
-                publicLinkInput.value = `${window.location.origin}/u/${profile.username}`;
-            }
-        }
-    } catch (err) {
-        console.error('Profile load error:', err);
+  try {
+    const res = await fetch(`/api/user?action=profile`, {
+      headers: { 'x-user-id': user.id }
+    });
+    if (res.ok) {
+      const profile = await res.json();
+      usernameInput.value = profile.username || '';
+      bioInput.value = profile.bio || '';
+      publicProfileToggle.checked = profile.isPublic || false;
+
+      if (profile.username) {
+        profileShareSection.style.display = 'block';
+        publicLinkInput.value = `${window.location.origin}/u/${profile.username}`;
+      }
     }
+  } catch (err) {
+    console.error('Profile load error:', err);
+  }
 }
 
 async function saveProfile() {
-    const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
-    if (!user || !user.id) return;
+  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  if (!user || !user.id) return;
 
-    saveProfileBtn.textContent = 'Saving...';
-    saveProfileBtn.disabled = true;
+  saveProfileBtn.textContent = 'Saving...';
+  saveProfileBtn.disabled = true;
 
-    try {
-        const res = await fetch('/api/user', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'x-user-id': user.id 
-            },
-            body: JSON.stringify({
-                username: usernameInput.value,
-                bio: bioInput.value,
-                isPublic: publicProfileToggle.checked
-            })
-        });
+  try {
+    const res = await fetch('/api/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': user.id
+      },
+      body: JSON.stringify({
+        username: usernameInput.value,
+        bio: bioInput.value,
+        isPublic: publicProfileToggle.checked
+      })
+    });
 
-        if (res.ok) {
-            showToast('Profile updated!');
-            loadProfile();
-        } else {
-            const err = await res.json();
-            showToast(err.error || 'Failed to update profile');
-        }
-    } catch (err) {
-        console.error('Profile save error:', err);
-        showToast('Network error saving profile');
-    } finally {
-        saveProfileBtn.textContent = 'Save Profile';
-        saveProfileBtn.disabled = false;
+    if (res.ok) {
+      showToast('Profile updated!');
+      loadProfile();
+    } else {
+      const err = await res.json();
+      showToast(err.error || 'Failed to update profile');
     }
+  } catch (err) {
+    console.error('Profile save error:', err);
+    showToast('Network error saving profile');
+  } finally {
+    saveProfileBtn.textContent = 'Save Profile';
+    saveProfileBtn.disabled = false;
+  }
 }
 
 profileNavBtn.addEventListener('click', () => {
-    profileModal.classList.add('open');
-    loadProfile();
+  profileModal.classList.add('open');
+  loadProfile();
 });
 $('profileModalClose').addEventListener('click', () => profileModal.classList.remove('open'));
 saveProfileBtn.addEventListener('click', saveProfile);
 $('copyProfileBtn').addEventListener('click', () => {
-    publicLinkInput.select();
-    document.execCommand('copy');
-    showToast('Link copied to clipboard!');
+  publicLinkInput.select();
+  document.execCommand('copy');
+  showToast('Link copied to clipboard!');
 });
