@@ -1626,3 +1626,351 @@ function showToast(msg) {
 
 // ── Init ───────────────────────────────────────────────────────────────
 initAuth();
+
+// ── New Features Integration ───────────────────────────────────────────
+
+// Feature DOM Elements
+const searchModal = $('searchModal');
+const analyticsModal = $('analyticsModal');
+const timelineModal = $('timelineModal');
+const searchNavBtn = $('searchNavBtn');
+const analyticsNavBtn = $('analyticsNavBtn');
+const timelineNavBtn = $('timelineNavBtn');
+
+const aiSearchInput = $('aiSearchInput');
+const aiSearchBtn = $('aiSearchBtn');
+const searchResults = $('searchResults');
+
+const moodChartCanvas = $('moodChart');
+const topArtistsList = $('topArtistsList');
+
+const timelinePlayPauseBtn = $('timelinePlayPauseBtn');
+const timelineProgress = $('timelineProgress');
+const timelineTitle = $('timelineTitle');
+const timelineArtist = $('timelineArtist');
+const timelineDate = $('timelineDate');
+const timelineNote = $('timelineNote');
+const timelineTags = $('timelineTags');
+const timelineSpeedBtn = $('timelineSpeedBtn');
+
+let moodChartInstance = null;
+let timelineItems = [];
+let timelineIdx = 0;
+let timelineInterval = null;
+let timelineSpeed = 1;
+
+// ── Search Logic ───────────────────────────────────────────────────────
+async function runSearch() {
+  const query = aiSearchInput.value.trim();
+  if (!query) return;
+
+  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  if (!user || !user.id) {
+    showToast('Please sign in to search your memories');
+    return;
+  }
+
+  aiSearchBtn.textContent = 'Searching...';
+  aiSearchBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-user-id': user.id
+      },
+      body: JSON.stringify({ query })
+    });
+
+    if (res.ok) {
+      const { results } = await res.json();
+      renderSearchResults(results);
+    } else {
+      showToast('Search failed. Try again.');
+    }
+  } catch (err) {
+    console.error('Search error:', err);
+    showToast('Network error during search');
+  } finally {
+    aiSearchBtn.textContent = 'Ask your past';
+    aiSearchBtn.disabled = false;
+  }
+}
+
+function renderSearchResults(results) {
+  searchResults.innerHTML = '';
+  if (!results || results.length === 0) {
+    searchResults.innerHTML = '<p style="text-align:center; opacity:0.5; margin-top:20px;">No matching memories found.</p>';
+    return;
+  }
+
+  results.forEach(res => {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.innerHTML = `
+      <div class="search-result-info">
+        <h4>${res.title || 'Untitled'}</h4>
+        <p>${res.artist || ''}</p>
+        <p style="font-style:italic; margin-top:4px;">"${res.note || ''}"</p>
+      </div>
+      <div class="search-result-meta">
+        <div>${formatDisplayDate(res.date)}</div>
+        <div style="color: var(--accent-warm); opacity:0.8; margin-top:4px;">${Math.round(res.similarityScore * 100)}% match</div>
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      searchModal.classList.remove('open');
+      openPlayModal(res.date);
+    });
+    searchResults.appendChild(item);
+  });
+}
+
+// ── Analytics Logic ────────────────────────────────────────────────────
+async function loadAnalytics() {
+  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  if (!user || !user.id) return;
+
+  try {
+    const res = await fetch('/api/analytics', {
+      headers: { 'x-user-id': user.id }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      renderAnalytics(data);
+    }
+  } catch (err) {
+    console.error('Analytics load error:', err);
+  }
+}
+
+function renderAnalytics(data) {
+  // Top Artists
+  topArtistsList.innerHTML = '';
+  if (data.topArtists && data.topArtists.length > 0) {
+    data.topArtists.slice(0, 5).forEach(art => {
+      const li = document.createElement('li');
+      li.className = 'analytics-list-item';
+      li.innerHTML = `<span>${art.artist}</span><span style="opacity:0.5">${art.count} times</span>`;
+      topArtistsList.appendChild(li);
+    });
+  } else {
+    topArtistsList.innerHTML = '<li class="analytics-list-item">No data yet</li>';
+  }
+
+  // Mood Chart
+  if (moodChartInstance) moodChartInstance.destroy();
+  
+  const ctx = moodChartCanvas.getContext('2d');
+  const moodLabels = Object.keys(data.moodDistribution || {});
+  const moodData = Object.values(data.moodDistribution || {});
+
+  if (moodLabels.length > 0) {
+    moodChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: moodLabels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+        datasets: [{
+          data: moodData,
+          backgroundColor: ['#c8a97e', '#8b7355', '#6b8e7f', '#7c8fad', '#a87c8e', '#c17c5a'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        cutout: '70%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#9b9287', font: { family: 'DM Mono', size: 10 } } }
+        }
+      }
+    });
+  }
+}
+
+// ── Timeline Logic ─────────────────────────────────────────────────────
+async function startTimeline() {
+  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  if (!user || !user.id) return;
+
+  try {
+    const res = await fetch('/api/timeline', {
+      headers: { 'x-user-id': user.id }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      timelineItems = data.timeline || [];
+      if (timelineItems.length === 0) {
+        showToast("No memories to play in your journey yet.");
+        return;
+      }
+      timelineIdx = 0;
+      timelineModal.classList.add('open');
+      showTimelineItem(0);
+    }
+  } catch (err) {
+    console.error('Timeline fetch error:', err);
+  }
+}
+
+function showTimelineItem(idx) {
+    if (idx < 0 || idx >= timelineItems.length) return;
+    timelineIdx = idx;
+    const item = timelineItems[idx];
+
+    timelineDate.textContent = formatDisplayDate(item.date);
+    timelineTitle.textContent = item.title || 'Untitled';
+    timelineArtist.textContent = item.artist || '';
+    timelineNote.textContent = item.note || '';
+    
+    timelineTags.innerHTML = '';
+    if (item.tags) {
+        item.tags.forEach(t => {
+            const span = document.createElement('span');
+            span.textContent = '#' + t;
+            timelineTags.appendChild(span);
+        });
+    }
+
+    // Progress reset
+    if (timelineInterval) clearInterval(timelineInterval);
+    let p = 0;
+    timelineProgress.style.width = '0%';
+    
+    // Auto transition after 5 seconds
+    timelineInterval = setInterval(() => {
+        p += (2 / timelineSpeed);
+        timelineProgress.style.width = p + '%';
+        if (p >= 100) {
+            clearInterval(timelineInterval);
+            if (timelineIdx < timelineItems.length - 1) {
+                showTimelineItem(timelineIdx + 1);
+            } else {
+                timelineModal.classList.remove('open');
+            }
+        }
+    }, 100 * timelineSpeed);
+}
+
+// ── Event Listeners ─────────────────────────────────────────────────────
+searchNavBtn.addEventListener('click', () => searchModal.classList.add('open'));
+analyticsNavBtn.addEventListener('click', () => {
+    analyticsModal.classList.add('open');
+    loadAnalytics();
+});
+timelineNavBtn.addEventListener('click', startTimeline);
+
+$('searchModalClose').addEventListener('click', () => searchModal.classList.remove('open'));
+$('analyticsModalClose').addEventListener('click', () => analyticsModal.classList.remove('open'));
+$('timelineModalClose').addEventListener('click', () => {
+    timelineModal.classList.remove('open');
+    if (timelineInterval) clearInterval(timelineInterval);
+});
+
+aiSearchBtn.addEventListener('click', runSearch);
+aiSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') runSearch(); });
+
+$('timelineNextBtn').addEventListener('click', () => {
+    if (timelineIdx < timelineItems.length - 1) showTimelineItem(timelineIdx + 1);
+});
+$('timelinePrevBtn').addEventListener('click', () => {
+    if (timelineIdx > 0) showTimelineItem(timelineIdx - 1);
+});
+$('timelinePlayPauseBtn').addEventListener('click', () => {
+    if (timelineInterval) {
+        clearInterval(timelineInterval);
+        timelineInterval = null;
+        $('timelinePlayPauseBtn').textContent = '▶';
+    } else {
+        showTimelineItem(timelineIdx);
+        $('timelinePlayPauseBtn').textContent = '||';
+    }
+});
+timelineSpeedBtn.addEventListener('click', () => {
+    if (timelineSpeed === 1) timelineSpeed = 0.5;
+    else if (timelineSpeed === 0.5) timelineSpeed = 2;
+    else timelineSpeed = 1;
+    timelineSpeedBtn.textContent = timelineSpeed + 'x';
+});
+
+// ── Profile Logic ──────────────────────────────────────────────────────
+const profileModal = $('profileModal');
+const profileNavBtn = $('profileNavBtn');
+const usernameInput = $('usernameInput');
+const bioInput = $('bioInput');
+const publicProfileToggle = $('publicProfileToggle');
+const saveProfileBtn = $('saveProfileBtn');
+const profileShareSection = $('profileShareSection');
+const publicLinkInput = $('publicLinkInput');
+
+async function loadProfile() {
+    const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+    if (!user || !user.id) return;
+
+    try {
+        const res = await fetch(`/api/user?action=profile`, {
+            headers: { 'x-user-id': user.id }
+        });
+        if (res.ok) {
+            const profile = await res.json();
+            usernameInput.value = profile.username || '';
+            bioInput.value = profile.bio || '';
+            publicProfileToggle.checked = profile.isPublic || false;
+            
+            if (profile.username) {
+                profileShareSection.style.display = 'block';
+                publicLinkInput.value = `${window.location.origin}/u/${profile.username}`;
+            }
+        }
+    } catch (err) {
+        console.error('Profile load error:', err);
+    }
+}
+
+async function saveProfile() {
+    const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+    if (!user || !user.id) return;
+
+    saveProfileBtn.textContent = 'Saving...';
+    saveProfileBtn.disabled = true;
+
+    try {
+        const res = await fetch('/api/user', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-user-id': user.id 
+            },
+            body: JSON.stringify({
+                username: usernameInput.value,
+                bio: bioInput.value,
+                isPublic: publicProfileToggle.checked
+            })
+        });
+
+        if (res.ok) {
+            showToast('Profile updated!');
+            loadProfile();
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Failed to update profile');
+        }
+    } catch (err) {
+        console.error('Profile save error:', err);
+        showToast('Network error saving profile');
+    } finally {
+        saveProfileBtn.textContent = 'Save Profile';
+        saveProfileBtn.disabled = false;
+    }
+}
+
+profileNavBtn.addEventListener('click', () => {
+    profileModal.classList.add('open');
+    loadProfile();
+});
+$('profileModalClose').addEventListener('click', () => profileModal.classList.remove('open'));
+saveProfileBtn.addEventListener('click', saveProfile);
+$('copyProfileBtn').addEventListener('click', () => {
+    publicLinkInput.select();
+    document.execCommand('copy');
+    showToast('Link copied to clipboard!');
+});

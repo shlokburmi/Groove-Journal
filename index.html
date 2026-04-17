@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="style.css" />
   <!-- Spotify IFrame Embed API (no auth required for embeds) -->
   <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -97,6 +98,12 @@
           <button class="nav-btn" id="nextMonthBtn" aria-label="Next month">›</button>
         </nav>
         <div class="header-right">
+          <nav class="feature-nav">
+            <button class="feature-link" id="timelineNavBtn">The Journey</button>
+            <button class="feature-link" id="searchNavBtn">Search</button>
+            <button class="feature-link" id="analyticsNavBtn">Insights</button>
+            <button class="feature-link" id="profileNavBtn">Profile</button>
+          </nav>
           <div class="user-pill" id="userPill">
             <span class="user-pill-dot" id="userPillDot"></span>
             <span class="user-pill-label" id="userPillLabel">guest</span>
@@ -525,6 +532,112 @@
 
       <!-- Delete button -->
       <button class="delete-btn" id="deleteMemoryBtn">Remove this memory</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: AI Search                                            -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="searchModal" role="dialog" aria-modal="true">
+    <div class="modal-panel search-panel">
+      <button class="modal-close" id="searchModalClose">✕</button>
+      <div class="modal-header">
+        <h2 class="modal-title">AI Smart Search</h2>
+        <p class="modal-subtitle">Rediscover your past through feelings & music.</p>
+      </div>
+      <div class="search-input-wrap">
+        <input type="text" id="aiSearchInput" class="text-input" placeholder="Search by mood, weather, or deep memories..." />
+        <button id="aiSearchBtn" class="save-btn" style="margin-top:10px;">Ask your past</button>
+      </div>
+      <div id="searchResults" class="search-results-list"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: Insights Dashboard                                  -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="analyticsModal" role="dialog" aria-modal="true">
+    <div class="modal-panel analytics-panel">
+      <button class="modal-close" id="analyticsModalClose">✕</button>
+      <div class="modal-header">
+        <h2 class="modal-title">Your Sound Insights</h2>
+        <p class="modal-subtitle">A visual journey through your listening patterns.</p>
+      </div>
+      <div class="analytics-grid">
+        <div class="analytics-card">
+            <h3>Mood Palette</h3>
+            <canvas id="moodChart"></canvas>
+        </div>
+        <div class="analytics-card">
+            <h3>Top Grooves</h3>
+            <ul id="topArtistsList" class="analytics-list"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: Timeline Playback                                      -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="timelineModal" role="dialog" aria-modal="true">
+    <div class="modal-panel timeline-panel">
+        <div class="timeline-background" id="timelineBg"></div>
+        <button class="modal-close" id="timelineModalClose" style="color: white; border-color: white;">✕</button>
+        
+        <div class="timeline-content-wrap">
+            <div id="timelineCard" class="timeline-card">
+                <div class="timeline-date" id="timelineDate"></div>
+                <h1 id="timelineTitle" class="timeline-title"></h1>
+                <h2 id="timelineArtist" class="timeline-artist"></h2>
+                <div id="timelineNote" class="timeline-note"></div>
+                <div id="timelineTags" class="timeline-tags"></div>
+            </div>
+        </div>
+
+        <div class="timeline-controls">
+            <div class="timeline-progress-bg">
+                <div id="timelineProgress" class="timeline-progress-fill"></div>
+            </div>
+            <div class="timeline-btns">
+                <button id="timelinePrevBtn">‹</button>
+                <button id="timelinePlayPauseBtn">▶</button>
+                <button id="timelineNextBtn">›</button>
+                <button id="timelineSpeedBtn">1x</button>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: Profile                                              -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="profileModal" role="dialog" aria-modal="true">
+    <div class="modal-panel profile-panel">
+      <button class="modal-close" id="profileModalClose">✕</button>
+      <div class="modal-header">
+        <h2 class="modal-title">Your Profile</h2>
+        <p class="modal-subtitle">Customize how others see your journey.</p>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Public Username</label>
+        <input type="text" id="usernameInput" class="text-input" placeholder="Choose a unique username..." />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Bio</label>
+        <textarea id="bioInput" class="text-input textarea" placeholder="Tell the world about your sound..."></textarea>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+        <label class="input-label" style="margin:0;">Public Profile</label>
+        <input type="checkbox" id="publicProfileToggle" />
+      </div>
+      <button id="saveProfileBtn" class="save-btn" style="margin-top:20px;">Save Profile</button>
+      <div id="profileShareSection" style="display:none; margin-top:30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top:20px;">
+        <p class="modal-subtitle" style="margin-bottom:10px;">Your Public Link:</p>
+        <div style="display:flex; gap:10px;">
+           <input type="text" id="publicLinkInput" class="text-input" readonly />
+           <button id="copyProfileBtn" class="feature-link" style="text-transform:none;">Copy</button>
+        </div>
+      </div>
     </div>
   </div>
 

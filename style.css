@@ -435,6 +435,33 @@ body {
   gap: 1rem;
 }
 
+.feature-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-right: 1.5rem;
+}
+
+.feature-link {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-round);
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.feature-link:hover {
+  background: rgba(200, 169, 126, 0.08);
+  border-color: var(--accent-warm);
+  color: var(--ink-primary);
+  transform: translateY(-1px);
+}
+
 .logo {
   display: flex;
   align-items: center;

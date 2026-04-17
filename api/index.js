@@ -105,18 +105,15 @@ app.get('/api/timeline', async (req, res) => {
 // User routes
 app.get('/api/user', (req, res) => {
     const { action, username } = req.query;
-    if (action === 'profile' && username) {
-        req.params = { username };
-        return userController.getPublicProfile(req, res);
+    if (action === 'profile') {
+        if (username) {
+            req.params = { username };
+            return userController.getPublicProfile(req, res);
+        } else {
+            return userController.getOwnProfile(req, res);
+        }
     }
     res.status(404).json({ error: 'Endpoint not found or missing parameters' });
-});
-
-app.patch('/api/user', (req, res) => {
-    if (req.query.action === 'update') {
-        return userController.updateProfile(req, res);
-    }
-    res.status(404).json({ error: 'Endpoint not found' });
 });
 
 app.post('/api/user', (req, res) => {
@@ -125,7 +122,8 @@ app.post('/api/user', (req, res) => {
         req.params = { username };
         return userController.followUser(req, res);
     }
-    res.status(404).json({ error: 'Endpoint not found' });
+    // Default to update if no action
+    return userController.updateProfile(req, res);
 });
 
 module.exports = app;
