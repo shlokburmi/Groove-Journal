@@ -85,84 +85,110 @@
     <!-- Header -->
     <header class="site-header">
       <div class="header-inner">
-        <div class="logo">
-          <span class="logo-icon">◎</span>
-          <span class="logo-text">groove</span>
-        </div>
-        <nav class="header-nav">
-          <button class="nav-btn" id="prevMonthBtn" aria-label="Previous month">‹</button>
-          <div class="month-display">
-            <span id="monthName" class="month-name"></span>
-            <span id="yearName" class="year-name"></span>
+        <div class="header-left">
+          <div class="logo">
+            <span class="logo-icon">◎</span>
+            <span class="logo-text">groove</span>
           </div>
-          <button class="nav-btn" id="nextMonthBtn" aria-label="Next month">›</button>
+        </div>
+        <nav class="feature-nav">
+          <button class="feature-link active" id="timelineNavBtn">The Journey</button>
+          <button class="feature-link" id="searchNavBtn">Search</button>
+          <button class="feature-link" id="analyticsNavBtn">Insights</button>
+          <button class="feature-link" id="profileNavBtn">Profile</button>
         </nav>
         <div class="header-right">
-          <nav class="feature-nav">
-            <button class="feature-link" id="timelineNavBtn">The Journey</button>
-            <button class="feature-link" id="searchNavBtn">Search</button>
-            <button class="feature-link" id="analyticsNavBtn">Insights</button>
-            <button class="feature-link" id="profileNavBtn">Profile</button>
-          </nav>
           <div class="user-pill" id="userPill">
-            <span class="user-pill-dot" id="userPillDot"></span>
-            <span class="user-pill-label" id="userPillLabel">guest</span>
-            <button class="user-pill-logout" id="logoutBtn" title="Sign out">✕</button>
+            <span class="user-pill-dot active" id="userPillDot"></span>
+            <span class="user-pill-label" id="userPillLabel">@guest</span>
+            <button class="user-pill-menu-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                <rect x="3" y="6" width="18" height="2" rx="1" />
+                <rect x="10" y="11" width="11" height="2" rx="1" />
+                <rect x="6" y="16" width="15" height="2" rx="1" />
+              </svg>
+            </button>
+            <button class="user-pill-logout" id="logoutBtn" title="Sign out" style="display:none;">✕</button>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- Calendar -->
-    <main class="calendar-container">
-      <div class="calendar-book">
-        <!-- Left page -->
-        <div class="book-page book-left">
-          <div class="book-left-content">
-            <div class="month-large-display">
-              <div class="month-number" id="monthNumberLeft"></div>
-              <div class="month-name-vertical" id="monthNameLeft"></div>
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Side Panel (Image 2 style) -->
+      <aside class="side-panel">
+        <div class="side-panel-inner">
+          <div class="large-date-wrap">
+            <span class="large-day-number" id="largeDayNumber">01</span>
+            <span class="large-month-name" id="largeMonthName">MARCH</span>
+          </div>
+          
+          <div class="side-stats-list">
+            <div class="stat-block">
+              <span class="stat-num" id="totalMemories">0</span>
+              <span class="stat-tag">MEMORIES SAVED</span>
             </div>
-            <div class="side-stats">
-              <div class="stat-item">
-                <span class="stat-value" id="totalMemories">0</span>
-                <span class="stat-label">memories saved</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-value" id="totalDays"></span>
-                <span class="stat-label">days this month</span>
-              </div>
+            <div class="stat-divider"></div>
+            <div class="stat-block">
+              <span class="stat-num" id="totalDays">31</span>
+              <span class="stat-tag">DAYS THIS MONTH</span>
             </div>
-            <div class="ambient-vinyl-display">
-              <div class="ambient-vinyl" id="ambientVinyl">
-                <div class="ambient-grooves"></div>
-                <div class="ambient-label">
-                  <div class="ambient-hole"></div>
-                </div>
-              </div>
-              <p class="ambient-text">click any date<br />to add a memory</p>
+          </div>
+
+          <div class="side-vinyl-wrap">
+            <div class="side-vinyl">
+              <div class="side-vinyl-grooves"></div>
+              <div class="side-vinyl-label"></div>
             </div>
+            <p class="side-vinyl-hint">click any date<br>to add a memory</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Calendar Section (Image 1 style) -->
+      <section class="calendar-section">
+        <div class="calendar-hero">
+          <div class="hero-text">
+            <h1 class="hero-title">The Calendar</h1>
+            <p class="hero-subtitle">CHARTING THE RHYTHM OF YOUR YEAR</p>
+          </div>
+          <div class="calendar-nav-controls">
+            <button class="round-nav-btn" id="prevMonthBtn">‹</button>
+            <button class="round-nav-btn" id="nextMonthBtn">›</button>
           </div>
         </div>
 
-        <!-- Right page -->
-        <div class="book-page book-right">
-          <div class="weekdays-row">
-            <div class="weekday">Sun</div>
-            <div class="weekday">Mon</div>
-            <div class="weekday">Tue</div>
-            <div class="weekday">Wed</div>
-            <div class="weekday">Thu</div>
-            <div class="weekday">Fri</div>
-            <div class="weekday">Sat</div>
+        <div class="calendar-grid-wrap">
+          <div class="weekdays-grid">
+            <span>MON</span>
+            <span>TUE</span>
+            <span>WED</span>
+            <span>THU</span>
+            <span>FRI</span>
+            <span>SAT</span>
+            <span>SUN</span>
           </div>
-          <div class="days-grid" id="daysGrid"></div>
+          <div class="calendar-grid" id="daysGrid">
+            <!-- Day cells populated by JS -->
+          </div>
         </div>
-      </div>
+
+        <!-- Now Recording Status Pill -->
+        <div class="now-recording-pill" id="nowRecordingPill">
+          <div class="pill-vinyl"></div>
+          <div class="pill-text">
+            <span class="pill-title">Now Recording Experience</span>
+            <span class="pill-sub">Listening to: <em id="currentlyListening">In A Silent Way</em></span>
+          </div>
+        </div>
+      </section>
+
     </main>
+    </footer>
 
-    <!-- Footer -->
-    <footer class="site-footer">
+  </div><!-- /.app-wrap -->
       <a class="footer-github" href="https://github.com/shlokburmi/Groove-Journal.git" target="_blank" rel="noopener">
         <svg class="footer-gh-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
           <path
@@ -542,7 +568,7 @@
     <div class="modal-panel search-panel">
       <button class="modal-close" id="searchModalClose">✕</button>
       <div class="modal-header">
-        <h2 class="modal-title">AI Smart Search</h2>
+        <h2 class="modal-title">Telekenesis</h2>
         <p class="modal-subtitle">Rediscover your past through feelings & music.</p>
       </div>
       <div class="search-input-wrap">

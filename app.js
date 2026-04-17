@@ -285,17 +285,19 @@ function showApp(provider) {
   // Try to show real username
   const userInfo = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
   if (userInfo && userInfo.name && userInfo.provider === provider) {
-    userPillLabel.textContent = userInfo.name;
+    userPillLabel.textContent = '@' + userInfo.name.toLowerCase().replace(/\s+/g, '');
   } else {
-    userPillLabel.textContent = meta.label;
+    userPillLabel.textContent = '@' + meta.label;
   }
-  userPillDot.className = 'user-pill-dot ' + meta.dotClass;
+  userPillDot.className = 'user-pill-dot active'; // Green dot from image
 
-  if (provider === 'spotify') highlightAuthTab('spotify');
-  if (provider === 'apple') highlightAuthTab('apple');
-  if (provider === 'youtube') highlightAuthTab('youtube');
+  // Update active state in nav
+  $$('.feature-link').forEach(btn => btn.classList.remove('active'));
+  $('timelineNavBtn').classList.add('active');
 
   renderCalendar();
+  // Initialize large date in side panel
+  selectDay(TODAY_KEY);
 }
 
 function highlightAuthTab(provider) {
@@ -346,16 +348,15 @@ logoutBtn.addEventListener('click', () => {
   localStorage.removeItem(GOOGLE_TOKEN_EXPIRY_KEY);
   appWrap.style.display = 'none';
   authScreen.style.display = 'flex';
-  // Reset any loading states on auth buttons
-  ['authSpotify', 'authApple', 'authYoutube'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn && btn.dataset.originalHtml) {
-      btn.innerHTML = btn.dataset.originalHtml;
-      btn.disabled = false;
-      btn.classList.remove('auth-btn-loading');
-    }
-  });
+  window.location.reload(); // Hard reset
 });
+
+const userPill = $('userPill');
+if (userPill) {
+  userPill.addEventListener('click', () => {
+    logoutBtn.style.display = (logoutBtn.style.display === 'none' || !logoutBtn.style.display) ? 'block' : 'none';
+  });
+}
 
 // ── State ─────────────────────────────────────────────────────────────
 const state = {
@@ -385,13 +386,12 @@ const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
 // Calendar
-const monthNameEl = $('monthName');
-const yearNameEl = $('yearName');
-const monthNumLeft = $('monthNumberLeft');
-const monthNameLeft = $('monthNameLeft');
+const largeDayNumber = $('largeDayNumber');
+const largeMonthName = $('largeMonthName');
 const totalMemories = $('totalMemories');
 const totalDaysEl = $('totalDays');
 const daysGrid = $('daysGrid');
+const heroTitle = document.querySelector('.hero-title');
 
 // Add modal
 const addModal = $('addModal');
@@ -549,10 +549,9 @@ function renderCalendar() {
   const y = state.currentYear;
   const m = state.currentMonth;
 
-  monthNameEl.textContent = MONTH_NAMES[m];
-  yearNameEl.textContent = y;
-  monthNumLeft.textContent = MONTH_NUMBERS[m];
-  monthNameLeft.textContent = MONTH_NAMES[m].toUpperCase();
+  // In the new UI, the hero subtitle shows the year
+  const heroSubtitle = document.querySelector('.hero-subtitle');
+  if (heroSubtitle) heroSubtitle.textContent = `CHARTING THE RHYTHM OF ${y}`;
 
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   totalDaysEl.textContent = daysInMonth;
@@ -562,7 +561,8 @@ function renderCalendar() {
 
   daysGrid.innerHTML = '';
 
-  const firstDay = new Date(y, m, 1).getDay();
+  const firstDayOfMo = new Date(y, m, 1).getDay(); // 0 is Sun
+  const firstDay = firstDayOfMo === 0 ? 6 : firstDayOfMo - 1; // Align to MON as 1st column
   const lastDay = new Date(y, m + 1, 0).getDate();
   const prevLast = new Date(y, m, 0).getDate();
 
@@ -577,6 +577,18 @@ function renderCalendar() {
   for (let d = 1; d <= nextFill; d++) {
     daysGrid.appendChild(createDayCell(y, m + 1, d, true));
   }
+}
+
+function selectDay(key) {
+  if (!key) return;
+  const [y, m, d] = key.split('-');
+  if (largeDayNumber) largeDayNumber.textContent = d;
+  if (largeMonthName) largeMonthName.textContent = MONTH_NAMES[parseInt(m) - 1].toUpperCase();
+
+  // Highlight in grid
+  $$('.day-cell').forEach(c => c.classList.remove('selected'));
+  const cell = document.querySelector(`.day-cell[data-key="${key}"]`);
+  if (cell) cell.classList.add('selected');
 }
 
 function createDayCell(y, m, d, otherMonth) {
@@ -595,41 +607,24 @@ function createDayCell(y, m, d, otherMonth) {
   cell.appendChild(num);
 
   if (memory) {
-    const wrap = document.createElement('div');
-    wrap.className = 'mini-vinyl-wrap';
-    const vinyl = document.createElement('div');
-    const hasClip = (memory.clipStart != null && memory.clipEnd != null);
-    vinyl.className = 'mini-vinyl' + (hasClip ? ' has-clip' : '');
-
-    const grooves = document.createElement('div');
-    grooves.className = 'mini-grooves';
-
-    const label = document.createElement('div');
-    label.className = 'mini-label';
-    label.style.background = memory.color || '#e8d5b7';
-
-    const hole = document.createElement('div');
-    hole.className = 'mini-hole';
-
-    label.appendChild(hole);
-    vinyl.appendChild(grooves);
-    vinyl.appendChild(label);
-    wrap.appendChild(vinyl);
-    cell.appendChild(wrap);
-
-    const title = document.createElement('div');
-    title.className = 'mini-title';
-    title.textContent = memory.title || 'Untitled';
-    cell.appendChild(title);
-
-    cell.addEventListener('click', () => openPlayModal(key));
-  } else if (!otherMonth) {
-    const hint = document.createElement('div');
-    hint.className = 'day-add-hint';
-    hint.textContent = '+';
-    cell.appendChild(hint);
-    cell.addEventListener('click', () => openAddModal(key));
+    cell.classList.add('has-memory');
+    const meta = document.createElement('div');
+    meta.className = 'day-meta-dots';
+    const dot = document.createElement('div');
+    dot.className = 'day-dot';
+    meta.appendChild(dot);
+    cell.appendChild(meta);
   }
+
+  cell.addEventListener('click', () => {
+    if (otherMonth) return;
+    selectDay(key);
+    if (!memory) {
+      openAddModal(key);
+    } else {
+      openPlayModal(key);
+    }
+  });
 
   return cell;
 }
@@ -1122,6 +1117,7 @@ function setPlayState(playing) {
     playPauseBtn.innerHTML = '<span class="pp-icon">⏸</span>';
     playPauseBtn.classList.add('playing');
     if (hintIcon) hintIcon.textContent = '⏸';
+    updateNowRecordingUI(true);
   } else {
     playerVinyl.classList.remove('playing');
     playerVinyl.classList.add('lifting');
@@ -1130,6 +1126,33 @@ function setPlayState(playing) {
     playPauseBtn.classList.remove('playing');
     if (hintIcon) hintIcon.textContent = '▶';
     setTimeout(() => playerVinyl.classList.remove('lifting'), 600);
+    updateNowRecordingUI(false);
+  }
+}
+
+function updateNowRecordingUI(active) {
+  const pill = $('nowRecordingPill');
+  if (!pill) return;
+  
+  if (active) {
+    const memory = state.memories[state.activeMemory];
+    const title = pill.querySelector('.pill-title');
+    const sub = pill.querySelector('.pill-sub');
+    
+    if (title) title.textContent = memory ? memory.title : 'Atmosphere';
+    if (sub) sub.textContent = memory ? 'JOURNALING THE RHYTHM' : 'AMBIENT VIBES';
+    
+    pill.classList.add('active');
+    pill.style.transform = 'translateY(0)';
+    pill.style.opacity = '1';
+    pill.style.visibility = 'visible';
+  } else {
+    pill.classList.remove('active');
+    pill.style.transform = 'translateY(100px)';
+    pill.style.opacity = '0';
+    setTimeout(() => {
+      pill.style.visibility = 'hidden';
+    }, 500);
   }
 }
 
