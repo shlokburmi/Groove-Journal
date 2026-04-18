@@ -1683,38 +1683,74 @@ let timelineInterval = null;
 let timelineSpeed = 1;
 
 // ── Search Logic ───────────────────────────────────────────────────────
+function searchMemoriesLocally(query) {
+  const lowerQuery = query.toLowerCase();
+  const results = [];
+
+  Object.entries(state.memories).forEach(([dateStr, memory]) => {
+    if (!memory) return;
+    const titleMatch = memory.title && memory.title.toLowerCase().includes(lowerQuery);
+    const noteMatch = memory.note && memory.note.toLowerCase().includes(lowerQuery);
+    const tagMatch = memory.tags && Array.isArray(memory.tags) && memory.tags.some(t => t.toLowerCase().includes(lowerQuery));
+    const moodMatch = memory.mood && memory.mood.toLowerCase().includes(lowerQuery);
+
+    if (titleMatch || noteMatch || tagMatch || moodMatch) {
+      const finalScore = titleMatch ? 0.95 : (moodMatch ? 0.8 : (noteMatch ? 0.7 : 0.6));
+      results.push({
+        date: dateStr,
+        title: memory.title,
+        artist: memory.artist,
+        mood: memory.mood,
+        note: memory.note,
+        tags: memory.tags,
+        finalScore
+      });
+    }
+  });
+
+  results.sort((a, b) => b.finalScore - a.finalScore);
+  return results.slice(0, 10);
+}
+
 async function runSearch() {
   const query = aiSearchInput.value.trim();
   if (!query) return;
 
-  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
-  if (!user || !user.id) {
-    showToast('Please sign in to search your memories');
-    return;
-  }
-
   aiSearchBtn.textContent = 'Searching...';
   aiSearchBtn.disabled = true;
 
-  try {
-    const res = await fetch('/api/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': user.id
-      },
-      body: JSON.stringify({ query })
-    });
+  const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
 
-    if (res.ok) {
-      const { results } = await res.json();
-      renderSearchResults(results);
-    } else {
-      showToast('Search failed. Try again.');
+  try {
+    // Try cloud search if logged in
+    if (user && user.id) {
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id
+        },
+        body: JSON.stringify({ query })
+      });
+
+      if (res.ok) {
+        const { results } = await res.json();
+        // If cloud returned results, use them; otherwise fall back to local
+        if (results && results.length > 0) {
+          renderSearchResults(results);
+          return;
+        }
+      }
     }
+
+    // Fallback: search state.memories locally (works for guests + unsynced memories)
+    const localResults = searchMemoriesLocally(query);
+    renderSearchResults(localResults);
   } catch (err) {
     console.error('Search error:', err);
-    showToast('Network error during search');
+    // On any error, fall back to local search
+    const localResults = searchMemoriesLocally(query);
+    renderSearchResults(localResults);
   } finally {
     aiSearchBtn.textContent = 'Ask your past';
     aiSearchBtn.disabled = false;
@@ -1751,22 +1787,72 @@ function renderSearchResults(results) {
 }
 
 // ── Analytics Logic ────────────────────────────────────────────────────
+function computeAnalyticsLocally() {
+  const MOOD_KEYWORDS = {
+    happy: ['joy', 'happy', 'fun', 'upbeat', 'dance', 'smile', 'sun', 'bright', 'party'],
+    sad: ['cry', 'sad', 'tears', 'alone', 'broken', 'heart', 'rain', 'miss', 'blue'],
+    calm: ['chill', 'relax', 'peace', 'sleep', 'ambient', 'soft', 'breeze', 'quiet', 'focus', 'night'],
+    energetic: ['pump', 'gym', 'run', 'power', 'fast', 'hard', 'electric', 'jump', 'wild', 'workout']
+  };
+
+  function guessMood(title, note) {
+    const text = ((title || '') + ' ' + (note || '')).toLowerCase();
+    const scores = { happy: 0, sad: 0, calm: 0, energetic: 0 };
+    for (const [mood, words] of Object.entries(MOOD_KEYWORDS)) {
+      words.forEach(w => { if (text.includes(w)) scores[mood]++; });
+    }
+    let best = 'calm', max = -1;
+    for (const [mood, score] of Object.entries(scores)) {
+      if (score > max) { max = score; best = mood; }
+    }
+    return best;
+  }
+
+  const moodDistribution = {};
+  const artistCount = {};
+  const heatmap = [];
+
+  Object.entries(state.memories).forEach(([dateStr, memory]) => {
+    if (!memory) return;
+    const mood = memory.mood || guessMood(memory.title, memory.note);
+    moodDistribution[mood] = (moodDistribution[mood] || 0) + 1;
+    const target = memory.artist || memory.title;
+    if (target) artistCount[target] = (artistCount[target] || 0) + 1;
+    heatmap.push({ date: dateStr, count: 1 });
+  });
+
+  const topArtists = Object.keys(artistCount)
+    .map(k => ({ item: k, count: artistCount[k] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  return { moodDistribution, topArtists, heatmap, monthlyTrend: [] };
+}
+
 async function loadAnalytics() {
   const user = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
-  if (!user || !user.id) return;
 
   try {
-    const res = await fetch('/api/analytics', {
-      headers: { 'x-user-id': user.id }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      renderAnalytics(data);
+    if (user && user.id) {
+      const res = await fetch('/api/analytics', {
+        headers: { 'x-user-id': user.id }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.moodDistribution && Object.keys(data.moodDistribution).length > 0) {
+          renderAnalytics(data);
+          return;
+        }
+      }
     }
+    // Fallback: compute analytics locally from state.memories
+    renderAnalytics(computeAnalyticsLocally());
   } catch (err) {
     console.error('Analytics load error:', err);
+    renderAnalytics(computeAnalyticsLocally());
   }
 }
+
 
 function renderAnalytics(data) {
   // Top Artists

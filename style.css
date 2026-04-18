@@ -784,6 +784,60 @@ body {
   color: var(--ink-primary);
 }
 
+/* ── Day cell vinyl disc indicator ─────────────────────────────── */
+.day-vinyl-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  flex: 1;
+  padding-bottom: 0.4rem;
+}
+
+.day-vinyl {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #0a0a0a;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.day-vinyl::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle at center,
+      #181818 0px,
+      #0d0d0d 1px,
+      #181818 2.5px);
+}
+
+.day-vinyl::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: var(--accent-warm);
+  border-radius: 50%;
+  border: 2.5px solid #0a0a0a;
+  z-index: 2;
+}
+
+.day-cell.has-memory {
+  background: rgba(200, 169, 126, 0.04);
+  border-color: rgba(200, 169, 126, 0.18);
+}
+
+.day-cell.has-memory:hover .day-vinyl,
+.day-cell.has-memory.selected .day-vinyl {
+  animation: slowSpin 3s linear infinite;
+}
+
 /* Day cell metadata dots */
 .day-meta-dots {
   display: flex;
